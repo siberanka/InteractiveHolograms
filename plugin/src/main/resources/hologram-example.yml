@@ -119,13 +119,14 @@ item_display: NONE
 block: minecraft:grass_block
 
 # Optional packet model bridge ---------------------------------------------
-# Options: NONE, BETTERMODEL, MYTHICMOBS.
+# Options: NONE, BETTERMODEL, MYTHICMOBS, MODELENGINE.
 # BETTERMODEL creates a location-only BetterModel DummyTracker.
-# MYTHICMOBS is a source label and uses the BetterModel model ID below; it does
-# not spawn a MythicMob or any other real entity.
+# MODELENGINE creates a ModelEngine Dummy and never a Bukkit entity.
+# MYTHICMOBS selects a Mythic mob ID and resolves its visual through an
+# installed BetterModel or ModelEngine backend; no MythicMob is spawned.
 model_provider: NONE
 
-# BetterModel model ID, for example "demon_knight". Empty disables the bridge.
+# Provider model/mob ID, for example "demon_knight". Empty disables the bridge.
 model: ''
 
 # Animation selection metadata. Empty uses the model's default/spawn behavior.

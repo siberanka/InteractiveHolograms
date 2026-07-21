@@ -6,6 +6,7 @@ softdepend:
   - "CraftEngine"
   - "BetterModel"
   - "MythicMobs"
+  - "ModelEngine"
 name: "InteractiveHolograms"
 description: ${description}
 version: ${version}
@@ -359,6 +360,7 @@ permissions:
       ih.command.displays.setting: true
       ih.command.displays.action: true
       ih.command.displays.import: true
+      ih.command.displays.model: true
       ih.command.displays.attribute: true
       ih.command.displays.resetattribute: true
       ih.command.displays.listattributes: true
@@ -460,5 +462,8 @@ permissions:
     description: "Allows packet-hitbox click action management"
     default: op
   ih.command.displays.import:
-    description: "Allows importing FancyHolograms YAML files"
+    description: "Allows importing FancyHolograms and DecentHolograms YAML files"
+    default: op
+  ih.command.displays.model:
+    description: "Allows selecting packet-only BetterModel, MythicMobs and ModelEngine models"
     default: op

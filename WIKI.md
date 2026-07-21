@@ -9,7 +9,7 @@ This document covers InteractiveHolograms 3.x. It is the canonical reference for
 - [Creating and editing holograms](#creating-and-editing-holograms)
 - [Hologram YAML reference](#hologram-yaml-reference)
 - [Click actions and hitboxes](#click-actions-and-hitboxes)
-- [FancyHolograms import](#fancyholograms-import)
+- [DecentHolograms and FancyHolograms import](#decentholograms-and-fancyholograms-import)
 - [Optional integrations](#optional-integrations)
 - [Configuration and permissions](#configuration-and-permissions)
 - [Backups and troubleshooting](#backups-and-troubleshooting)
@@ -30,7 +30,7 @@ The main aliases are `/ih`, `/holograms`, `/hologram`, `/holo` and the migration
 
 InteractiveHolograms does not call Bukkit world spawn methods for persistent holograms. Each viewer receives spawn, metadata, move and destroy packets based on world, distance and visibility rules. A clickable hologram receives a virtual hitbox entity ID automatically. Incoming interaction packets are matched quickly, then permission, world, distance and cooldown checks and all actions run on the main server thread.
 
-BetterModel integration uses its location-based `DummyTracker`, which is not attached to a Bukkit entity. MythicMobs mobs are never spawned by InteractiveHolograms; use a BetterModel model name for a packet-only visual representation.
+BetterModel integration uses its location-based `DummyTracker`. ModelEngine uses its non-Bukkit `Dummy`. MythicMobs mobs are never spawned by InteractiveHolograms; their registered IDs are resolved through an installed packet model backend.
 
 ## Creating and editing holograms
 
@@ -57,6 +57,8 @@ Core commands:
 | `/ih holograms setting <name> <setting> [value]` | Edit visibility, permission, persistence or hitbox metadata |
 | `/ih holograms action ...` | Manage click actions |
 | `/ih holograms import-fancy ...` | Import FancyHolograms YAML |
+| `/ih holograms import-decent ...` | Import DecentHolograms YAML files |
+| `/ih holograms model <name> <provider> [model] [animation]` | Select an installed model/mob; arguments tab-complete dynamically |
 
 Frequently used attributes include `billboard`, `scale`, `translation`, `yaw`, `pitch`, `brightness`, `shadow-radius`, `shadow-strength`, `glow-color`, `alignment`, `text-shadow`, `see-through`, `background-color`, `line-width`, `text-opacity`, `display-type`, `enchanted`, `leather-color` and `skull-texture`. Run `list-attributes` because applicable attributes depend on hologram type and server capability.
 
@@ -100,9 +102,79 @@ General keys:
 
 Text-only keys are `text`, `text_shadow`, `see_through`, `text_alignment` (`LEFT`, `CENTER`, `RIGHT`), `background`, `line_width` and `text_opacity`. Item-only keys are `item`, `item_provider` (`AUTO`, `VANILLA`, `CRAFTENGINE`) and `item_display` (`NONE`, `THIRD_PERSON_LEFT_HAND`, `THIRD_PERSON_RIGHT_HAND`, `FIRST_PERSON_LEFT_HAND`, `FIRST_PERSON_RIGHT_HAND`, `HEAD`, `GUI`, `GROUND`, `FIXED`). Block holograms use `block`.
 
-`model_provider` accepts `NONE`, `BETTERMODEL` or `MYTHICMOBS`. Both model modes require BetterModel and use `model` as the BetterModel model ID; `MYTHICMOBS` labels the source relationship but intentionally does not spawn a MythicMob. `animation` is retained as model metadata for forward-compatible animation selection. For a model-only ITEM hologram, set its display `scale` to zero so only the BetterModel dummy is visible.
+`model_provider` accepts `NONE`, `BETTERMODEL`, `MYTHICMOBS` or `MODELENGINE`. `BETTERMODEL` uses a location-only DummyTracker; `MODELENGINE` uses a non-Bukkit Dummy. `MYTHICMOBS` validates a registered Mythic mob ID, then resolves the same visual ID through BetterModel or ModelEngine without invoking a mob-spawn API. The `/ih holograms model` command lists installed providers, model/mob IDs and discoverable animations in tab completion. For a model-only base display, set its display scale to zero so only the external packet model is visible.
 
 On load, the schema manager adds missing known entries, normalizes case and ranges, and removes unknown root keys. A backup is made before any repaired file is saved.
+
+### Complete hologram YAML example
+
+The following file is valid as `plugins/InteractiveHolograms/holograms/complete-example.yml`. It deliberately includes every public entry; only the content entries matching `type` are rendered.
+
+```yaml
+schema-version: 3
+type: TEXT # TEXT, ITEM, BLOCK
+location:
+  world: world
+  x: 0.0
+  y: 64.0
+  z: 0.0
+  yaw: 0.0 # -180..180
+  pitch: 0.0 # -90..90
+enabled: true
+visibility_distance: -1 # -1 or a non-negative block distance
+visibility: ALL # ALL, MANUAL, PERMISSION_REQUIRED
+permission: ''
+persistent: true
+billboard: CENTER # CENTER, FIXED, HORIZONTAL, VERTICAL
+scale_x: 1.0
+scale_y: 1.0
+scale_z: 1.0
+translation_x: 0.0
+translation_y: 0.0
+translation_z: 0.0
+shadow_radius: 0.0
+shadow_strength: 1.0
+block_brightness: -1 # -1 or 0..15
+sky_brightness: -1 # -1 or 0..15
+glowing_color: disabled # disabled, named color, or supported hex
+update_text_interval: -1 # -1 or positive ticks
+
+# TEXT content
+text:
+  - '<gold><bold>InteractiveHolograms</bold>'
+  - '<gray>Packet-only and clickable'
+text_shadow: false
+see_through: false
+text_alignment: CENTER # LEFT, CENTER, RIGHT
+background: '#40000000'
+line_width: 300 # 1..4096
+text_opacity: 255 # 0..255
+
+# ITEM content
+item: minecraft:apple # or a CraftEngine ID such as default:ruby
+item_provider: AUTO # AUTO, VANILLA, CRAFTENGINE
+item_display: NONE # NONE, THIRD_PERSON_LEFT_HAND, THIRD_PERSON_RIGHT_HAND,
+                   # FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND, HEAD,
+                   # GUI, GROUND, FIXED
+
+# BLOCK content
+block: minecraft:grass_block
+
+# External packet model
+model_provider: NONE # NONE, BETTERMODEL, MYTHICMOBS, MODELENGINE
+model: '' # provider model/mob ID
+animation: '' # provider animation ID or empty
+
+# LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT. A non-empty action map creates the
+# per-viewer packet hitbox automatically for text, item, block, model and mob.
+actions:
+  RIGHT:
+    - 'MESSAGE:<green>You clicked the hologram!'
+  SHIFT_RIGHT:
+    - 'CONSOLE:say {player} used the hologram'
+```
+
+The generated `hologram-example.yml` contains the same keys with expanded inline explanations and can be copied as a starting point.
 
 ## Click actions and hitboxes
 
@@ -126,7 +198,15 @@ Common action types:
 
 Use `{player}` for player-name replacement. Packet input is revalidated against world and an eight-block interaction limit. `click-cooldown` in `config.yml` controls repeated activation.
 
-## FancyHolograms import
+## DecentHolograms and FancyHolograms import
+
+DecentHolograms stores one YAML file per hologram. The importer reads a directory or a single file, converts the first page into the modern packet schema, recognizes text plus single-line `#ICON`, `#HEAD`, `#SMALLHEAD` and `#ENTITY` visuals, carries location, visibility range, update interval, permission and page click actions, and reports a warning when additional pages require manual review. Imported `#ENTITY` lines become zero-scale ITEM anchors with a `MYTHICMOBS` model ID; they remain entity-free and need a matching BetterModel or ModelEngine visual:
+
+```text
+/ih holograms import-decent
+/ih holograms import-decent plugins/DecentHolograms/holograms
+/ih holograms import-decent plugins/DecentHolograms/holograms/example.yml --overwrite
+```
 
 The importer supports FancyHolograms' legacy `holograms.yml` storage:
 
@@ -145,8 +225,11 @@ Current FancyHolograms releases may migrate YAML into JSON. Import the preserved
 - **PlaceholderAPI:** placeholders are resolved for viewers in text and supported attributes.
 - **HeadDatabase:** skull identifiers remain available through item/skull content support.
 - **CraftEngine:** use a namespaced ID such as `default:ruby`; `AUTO` resolves non-`minecraft` IDs through CraftEngine's public API.
-- **BetterModel:** set `model_provider: BETTERMODEL` and `model: demon_knight`. A location-only dummy tracker is created and moved with the hologram.
-- **MythicMobs + BetterModel:** set `model_provider: MYTHICMOBS` and supply the corresponding BetterModel model ID. InteractiveHolograms never calls MythicMobs' mob-spawn API because that would create a real entity.
+- **BetterModel:** `model_provider: BETTERMODEL` creates a location-only DummyTracker.
+- **ModelEngine:** `model_provider: MODELENGINE` creates a ModelEngine Dummy and active packet model.
+- **MythicMobs:** `model_provider: MYTHICMOBS` selects a registered mob ID and resolves its model through BetterModel or ModelEngine. InteractiveHolograms never calls the mob-spawn API.
+
+Use the command instead of guessing IDs: `/ih holograms model <hologram> <provider> <model-or-mob> [animation]`. Every selectable provider, model/mob and discoverable animation is offered by live tab completion and validated before it is saved.
 
 All integrations are soft dependencies. Missing providers do not prevent the plugin from enabling.
 
@@ -163,6 +246,7 @@ ih.command.displays.attribute
 ih.command.displays.setting
 ih.command.displays.action
 ih.command.displays.import
+ih.command.displays.model
 ```
 
 `PERMISSION_REQUIRED` visibility defaults to `interactiveholograms.hologram.<name>.view` when `permission` is empty.
@@ -170,7 +254,7 @@ ih.command.displays.import
 ## Backups and troubleshooting
 
 - Automatic repairs: `<name>.backup-YYYYMMDD-HHMMSS.yml`
-- Fancy overwrite import: `<name>.import-backup-YYYYMMDD-HHMMSS.yml`
+- Decent/Fancy overwrite import: `<name>.import-backup-YYYYMMDD-HHMMSS.yml`
 - Backups are ignored by the loader and may be restored while the server is stopped.
 - YAML indentation uses spaces. Avoid tabs.
 - Quote text containing YAML control characters such as `:`, `#`, `{` or `}`.

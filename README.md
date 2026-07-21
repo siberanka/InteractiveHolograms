@@ -13,9 +13,10 @@ InteractiveHolograms is a packet-only hologram engine for Bukkit-compatible Mine
 - Per-hologram visibility, permission, distance, persistence and update settings
 - LEFT, RIGHT, SHIFT_LEFT and SHIFT_RIGHT actions with server-side distance and cooldown validation
 - Safe YAML schema migration: missing values are supplied and repaired files are backed up before invalid values are removed
-- FancyHolograms YAML import with collision-safe overwrite backups
+- DecentHolograms and FancyHolograms YAML import with collision-safe overwrite backups
 - PlaceholderAPI and HeadDatabase compatibility
-- CraftEngine custom-item IDs and BetterModel packet-only dummy models; MythicMobs setups can reference their BetterModel model without spawning a mob
+- CraftEngine custom-item IDs plus entity-free BetterModel and ModelEngine models
+- Dynamic command completion for installed BetterModel models, MythicMobs mob types, ModelEngine models and their discoverable animations
 - Full in-game editing through `/ih holograms ...`
 
 ## Documentation
@@ -31,6 +32,7 @@ The generated `hologram-example.yml`, `config.yml` and `attribute-defaults.yml` 
 3. Create a hologram: `/ih holograms create TEXT welcome Welcome to the server!`
 4. Add an interaction: `/ih holograms action welcome add RIGHT MESSAGE:<green>Hello!`
 5. Edit display properties: `/ih holograms attribute welcome billboard FIXED`
+6. Select an installed custom model: `/ih holograms model welcome BETTERMODEL <tab>`
 
 Holograms are stored as individual files in `plugins/InteractiveHolograms/holograms/`.
 
@@ -58,7 +60,7 @@ dependencies {
 }
 ```
 
-Replace `VERSION` with a published tag such as `v3.0.0`.
+Replace `VERSION` with a published tag such as `v3.1.0`.
 
 ## Contributing and security
 

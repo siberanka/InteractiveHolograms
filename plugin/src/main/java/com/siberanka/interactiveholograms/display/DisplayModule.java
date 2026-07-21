@@ -83,6 +83,7 @@ import com.siberanka.interactiveholograms.display.config.DisplayConfigMapper;
 import com.siberanka.interactiveholograms.display.config.DisplayPersistenceService;
 import com.siberanka.interactiveholograms.display.config.DisplayRepository;
 import com.siberanka.interactiveholograms.display.config.FancyHologramsImporter;
+import com.siberanka.interactiveholograms.display.config.DecentHologramsImporter;
 import com.siberanka.interactiveholograms.display.config.YamlConfigurationLoaderFactory;
 import com.siberanka.interactiveholograms.display.config.dto.ConfigAttribute;
 import com.siberanka.interactiveholograms.display.config.dto.ConfigDefaultAttribute;
@@ -98,7 +99,8 @@ import com.siberanka.interactiveholograms.display.render.DisplayRenderIntentMate
 import com.siberanka.interactiveholograms.display.render.DisplayRenderService;
 import com.siberanka.interactiveholograms.display.render.DisplayVisibilityService;
 import com.siberanka.interactiveholograms.display.interaction.DisplayInteractionService;
-import com.siberanka.interactiveholograms.display.integration.BetterModelDisplayService;
+import com.siberanka.interactiveholograms.display.integration.ModelCatalogService;
+import com.siberanka.interactiveholograms.display.integration.ModelDisplayService;
 import com.siberanka.interactiveholograms.api.InteractiveHologramsAPI;
 import com.siberanka.interactiveholograms.display.render.TextPostProcessor;
 import com.siberanka.interactiveholograms.display.render.placeholder.DisplayPlaceholderService;
@@ -141,7 +143,7 @@ public class DisplayModule {
     private final AttributeDefaultService attributeDefaultService;
     private final LegacyCachingBukkitTextFormatter textFormatter;
     private final DisplayInteractionService interactionService;
-    private final BetterModelDisplayService betterModelService;
+    private final ModelDisplayService modelDisplayService;
 
     public DisplayModule(JavaPlugin plugin, AnimationManager animationManager, PlatformAdapter platformAdapter) {
         this.plugin = plugin;
@@ -179,9 +181,12 @@ public class DisplayModule {
         AttributeCommandService attributeCommandService = new AttributeCommandService(
                 attributeDefinitionRegistry, commandHandlerRegistry, attributeDefaultService);
         DisplayAttributeService displayAttributeService = new DisplayAttributeService(attributeDefinitionRegistry);
+        java.nio.file.Path serverRoot = resolveServerRoot(plugin);
+        ModelCatalogService modelCatalog = new ModelCatalogService();
         this.displaysCommand = new DisplaysCommand(
                 displayService, displayCloneService, attributeCommandService, attributeDefaultService, displayAttributeService,
-                platformAdapter.getMaterialService(), new FancyHologramsImporter(resolveServerRoot(plugin), plugin.getDataFolder().toPath()));
+                platformAdapter.getMaterialService(), new FancyHologramsImporter(serverRoot, plugin.getDataFolder().toPath()),
+                new DecentHologramsImporter(serverRoot, plugin.getDataFolder().toPath()), modelCatalog);
         this.displayUpdateScheduler = new DisplayUpdateScheduler(plugin, displayService, renderCoordinator);
         this.interactionService = new DisplayInteractionService(
                 plugin,
@@ -189,7 +194,7 @@ public class DisplayModule {
                 visibilityService,
                 InteractiveHologramsAPI.get().getNmsAdapter().getHologramComponentFactory()
         );
-        this.betterModelService = new BetterModelDisplayService(plugin, displayService);
+        this.modelDisplayService = new ModelDisplayService(plugin, displayService);
     }
 
     private AttributeCommandHandlerRegistry createCommandHandlerRegistry(DisplayPlaceholderService placeholderService) {
@@ -268,7 +273,7 @@ public class DisplayModule {
         this.displayService.reload();
         this.displayUpdateScheduler.start();
         this.interactionService.start();
-        this.betterModelService.start();
+        this.modelDisplayService.start();
         Bukkit.getPluginManager().registerEvents(displayListener, plugin);
     }
 
@@ -280,7 +285,7 @@ public class DisplayModule {
     public void shutdown() {
         HandlerList.unregisterAll(displayListener);
         this.interactionService.shutdown();
-        this.betterModelService.shutdown();
+        this.modelDisplayService.shutdown();
         this.displayUpdateScheduler.shutdown();
         this.displayService.shutdown();
         this.attributeDefaultService.shutdown();

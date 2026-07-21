@@ -16,6 +16,8 @@ import java.util.Map;
 /** Imports the legacy FancyHolograms YAML storage without loading its plugin. */
 public final class FancyHologramsImporter {
 
+    private static final long MAX_FILE_BYTES = 32L * 1024L * 1024L;
+    private static final int MAX_HOLOGRAMS = 10_000;
     private static final DateTimeFormatter BACKUP_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private final Path serverRoot;
     private final Path hologramsDirectory;
@@ -28,18 +30,23 @@ public final class FancyHologramsImporter {
     public ImportResult importYaml(String configuredPath, boolean overwrite) throws IOException {
         String pathValue = configuredPath == null || configuredPath.trim().isEmpty()
                 ? "plugins/FancyHolograms/holograms.yml" : configuredPath.trim();
-        Path source = serverRoot.resolve(pathValue).normalize().toAbsolutePath();
-        if (!source.startsWith(serverRoot)) {
+        Path candidate = serverRoot.resolve(pathValue).normalize().toAbsolutePath();
+        if (!candidate.startsWith(serverRoot) || !Files.isRegularFile(candidate)) {
+            throw new IOException("FancyHolograms file was not found inside the server directory: " + candidate);
+        }
+        Path source = candidate.toRealPath();
+        if (!source.startsWith(serverRoot.toRealPath())) {
             throw new IOException("Import path must stay inside the server directory.");
         }
-        if (!Files.isRegularFile(source)) {
-            throw new IOException("FancyHolograms file was not found: " + source);
-        }
+        if (Files.size(source) > MAX_FILE_BYTES) throw new IOException("FancyHolograms YAML exceeds the 32 MiB import limit.");
 
         YamlConfiguration input = YamlConfiguration.loadConfiguration(source.toFile());
         ConfigurationSection holograms = input.getConfigurationSection("holograms");
         if (holograms == null) {
             holograms = input;
+        }
+        if (holograms.getKeys(false).size() > MAX_HOLOGRAMS) {
+            throw new IOException("Import contains more than " + MAX_HOLOGRAMS + " holograms.");
         }
         Files.createDirectories(hologramsDirectory);
 
@@ -76,10 +83,24 @@ public final class FancyHologramsImporter {
             output.set("schema-version", HologramConfigMigrator.SCHEMA_VERSION);
             output.set("enabled", true);
             normalizeFancyItem(output);
-            output.save(target.toFile());
+            saveAtomically(output, target);
             imported++;
         }
         return new ImportResult(imported, skipped, source);
+    }
+
+    private void saveAtomically(YamlConfiguration output, Path target) throws IOException {
+        Path temporary = Files.createTempFile(hologramsDirectory, ".import-", ".yml");
+        try {
+            output.save(temporary.toFile());
+            try {
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 
     private void normalizeFancyItem(YamlConfiguration output) {

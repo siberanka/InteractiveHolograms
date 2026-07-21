@@ -2,6 +2,7 @@ package com.siberanka.interactiveholograms.nms;
 
 import com.siberanka.interactiveholograms.api.actions.ClickType;
 import com.siberanka.interactiveholograms.api.holograms.HologramManager;
+import com.siberanka.interactiveholograms.display.interaction.DisplayInteractionService;
 import com.siberanka.interactiveholograms.nms.api.event.NmsEntityInteractAction;
 import com.siberanka.interactiveholograms.nms.api.event.NmsEntityInteractEvent;
 import org.bukkit.entity.Player;
@@ -84,6 +85,23 @@ class InteractiveHologramsNmsPacketListenerTest {
 
         assertTrue(event.isHandled());
         verify(hologramManager).onClick(player, 1, ClickType.LEFT);
+    }
+
+    @ParameterizedTest
+    @MethodSource("providerInteractionActionsWithRespectiveClickTypes")
+    void packetDisplayHitboxHandlesEveryClickWithoutLegacyEntityLookup(NmsEntityInteractAction action, ClickType clickType) {
+        Player player = mock(Player.class);
+        DisplayInteractionService modern = mock(DisplayInteractionService.class);
+        packetListener.setDisplayInteractionService(modern);
+        when(modern.acceptClick(player, 42, clickType)).thenReturn(true);
+        NmsEntityInteractEvent event = new NmsEntityInteractEvent(player, 42, action);
+
+        packetListener.onEntityInteract(event);
+
+        assertTrue(event.isHandled());
+        verify(modern).acceptClick(player, 42, clickType);
+        verify(hologramManager, never()).hasEntity(any(), anyInt());
+        verify(hologramManager, never()).onClick(any(), anyInt(), any());
     }
 
 }

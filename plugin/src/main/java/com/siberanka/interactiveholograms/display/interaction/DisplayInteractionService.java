@@ -86,7 +86,7 @@ public final class DisplayInteractionService {
         Collection<DisplayBase> displays = displayService.getRegisteredDisplays();
         Set<String> liveNames = ConcurrentHashMap.newKeySet();
         for (DisplayBase display : displays) {
-            if (!display.hasActions() || !display.getSettings().isEnabled()) {
+            if (!requiresPacketHitbox(display)) {
                 removeHitbox(display.getName());
                 continue;
             }
@@ -101,6 +101,11 @@ public final class DisplayInteractionService {
             }
         }
         clickCooldowns.keySet().removeIf(uuid -> Bukkit.getPlayer(uuid) == null);
+    }
+
+    /** Click hitboxes depend on actions, not the visual kind (text/item/block/model/mob). */
+    public static boolean requiresPacketHitbox(DisplayBase display) {
+        return display != null && display.hasActions() && display.getSettings().isEnabled();
     }
 
     private void synchronizeViewers(DisplayBase display, HitboxHandle handle) {
@@ -146,13 +151,17 @@ public final class DisplayInteractionService {
             return;
         }
         clickCooldowns.put(playerId, now);
+        executeActions(display, player, clickType);
+    }
+
+    static void executeActions(DisplayBase display, Player player, ClickType clickType) {
         for (Action action : display.getActions(clickType)) {
             try {
                 if (!action.execute(player)) {
                     break;
                 }
             } catch (RuntimeException exception) {
-                Log.warn("Failed to execute action '%s' for hologram '%s'.", exception, action, displayName);
+                Log.warn("Failed to execute action '%s' for hologram '%s'.", exception, action, display.getName());
                 break;
             }
         }

@@ -31,6 +31,8 @@ import com.siberanka.interactiveholograms.display.attribute.DisplayAttributeServ
 import com.siberanka.interactiveholograms.display.attribute.defaults.AttributeDefaultService;
 import com.siberanka.interactiveholograms.platform.api.capability.PlatformMaterialService;
 import com.siberanka.interactiveholograms.display.config.FancyHologramsImporter;
+import com.siberanka.interactiveholograms.display.config.DecentHologramsImporter;
+import com.siberanka.interactiveholograms.display.integration.ModelCatalog;
 
 @CommandInfo(
         usage = "/ih holograms help",
@@ -46,7 +48,9 @@ public class DisplaysCommand extends DecentCommand {
                            AttributeDefaultService attributeDefaultService,
                            DisplayAttributeService displayAttributeService,
                            PlatformMaterialService materialService,
-                           FancyHologramsImporter fancyImporter) {
+                           FancyHologramsImporter fancyImporter,
+                           DecentHologramsImporter decentImporter,
+                           ModelCatalog modelCatalog) {
         super("holograms");
 
         addSubCommand(new DisplaysHelpCommand(this));
@@ -71,6 +75,8 @@ public class DisplaysCommand extends DecentCommand {
         addSubCommand(new BlockDisplaySetBlockCommand(displayService, materialService));
         addSubCommand(new ItemDisplaySetItemCommand(displayService, materialService));
         addSubCommand(new FancyImportDisplayCommand(fancyImporter, displayService));
+        addSubCommand(new DecentImportDisplayCommand(decentImporter, displayService));
+        addSubCommand(new ModelDisplayCommand(displayService, modelCatalog));
         addSubCommand(new ActionDisplayCommand(displayService));
         addSubCommand(new SettingDisplayCommand(displayService));
         DisplayTabCompleteHelper tabCompleteHelper = new DisplayTabCompleteHelper(displayService);

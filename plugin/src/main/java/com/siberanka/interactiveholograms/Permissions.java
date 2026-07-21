@@ -146,6 +146,7 @@ public final class Permissions {
     public static final String COMMAND_DISPLAYS_IMPORT = COMMAND_DISPLAYS + ".import";
     public static final String COMMAND_DISPLAYS_ACTION = COMMAND_DISPLAYS + ".action";
     public static final String COMMAND_DISPLAYS_SETTING = COMMAND_DISPLAYS + ".setting";
+    public static final String COMMAND_DISPLAYS_MODEL = COMMAND_DISPLAYS + ".model";
 
     // -- Profiler Commands
 

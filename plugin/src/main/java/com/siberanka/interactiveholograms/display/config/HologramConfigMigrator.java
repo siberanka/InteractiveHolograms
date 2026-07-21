@@ -28,7 +28,7 @@ public final class HologramConfigMigrator {
     private static final Set<String> ALIGNMENTS = new HashSet<>(Arrays.asList("LEFT", "CENTER", "RIGHT"));
     private static final Set<String> VISIBILITIES = new HashSet<>(Arrays.asList("ALL", "MANUAL", "PERMISSION_REQUIRED"));
     private static final Set<String> ITEM_PROVIDERS = new HashSet<>(Arrays.asList("AUTO", "VANILLA", "CRAFTENGINE"));
-    private static final Set<String> MODEL_PROVIDERS = new HashSet<>(Arrays.asList("NONE", "BETTERMODEL", "MYTHICMOBS"));
+    private static final Set<String> MODEL_PROVIDERS = new HashSet<>(Arrays.asList("NONE", "BETTERMODEL", "MYTHICMOBS", "MODELENGINE"));
     private static final Set<String> ITEM_DISPLAYS = new HashSet<>(Arrays.asList(
             "NONE", "THIRD_PERSON_LEFT_HAND", "THIRD_PERSON_RIGHT_HAND", "FIRST_PERSON_LEFT_HAND",
             "FIRST_PERSON_RIGHT_HAND", "HEAD", "GUI", "GROUND", "FIXED"));
