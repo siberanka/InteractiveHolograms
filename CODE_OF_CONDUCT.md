@@ -1,7 +1,7 @@
 # Code of Conduct
 
 ## Our Pledge
-Look, we’re all tired here, and nobody wants drama. So, let’s keep the DecentHolograms project a somewhat bearable, mostly drama-free zone. We solemnly pledge to make this experience as harassment-free as humanly possible (whatever’s left of our humanity at this point).
+Look, we’re all tired here, and nobody wants drama. So, let’s keep the InteractiveHolograms project a somewhat bearable, mostly drama-free zone. We solemnly pledge to make this experience as harassment-free as humanly possible (whatever’s left of our humanity at this point).
 ## Expected Behavior
 - Respect others’ opinions. Even if you think they’re wild. Especially then.
 - Try to give feedback that’s actually helpful – we’re not here for therapy, but if you need to vent, we get it.

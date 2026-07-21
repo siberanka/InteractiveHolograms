@@ -1,5 +1,6 @@
 ### Gradle & IntelliJ ###
 /.gradle/
+**/.gradle/
 /.idea/
 build
 out
@@ -21,3 +22,4 @@ ehthumbs_vista.db
 [Dd]esktop.ini
 $RECYCLE.BIN/
 *.lnk
+prompt.md

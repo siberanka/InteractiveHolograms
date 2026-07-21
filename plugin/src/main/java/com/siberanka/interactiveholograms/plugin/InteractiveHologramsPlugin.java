@@ -1,0 +1,64 @@
+package com.siberanka.interactiveholograms.plugin;
+
+import com.siberanka.interactiveholograms.api.InteractiveHolograms;
+import com.siberanka.interactiveholograms.api.InteractiveHologramsAPI;
+import com.siberanka.interactiveholograms.api.commands.CommandManager;
+import com.siberanka.interactiveholograms.api.commands.DecentCommand;
+import com.siberanka.interactiveholograms.api.utils.reflect.Version;
+import com.siberanka.interactiveholograms.display.DisplayModule;
+import com.siberanka.interactiveholograms.hook.NbtApiHook;
+import com.siberanka.interactiveholograms.plugin.commands.HologramsCommand;
+import com.siberanka.interactiveholograms.plugin.features.DamageDisplayFeature;
+import com.siberanka.interactiveholograms.plugin.features.HealingDisplayFeature;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class InteractiveHologramsPlugin extends JavaPlugin {
+
+    private boolean unsupportedServerVersion = false;
+
+    @Override
+    public void onLoad() {
+        if (Version.CURRENT == null) {
+            unsupportedServerVersion = true;
+            return;
+        }
+
+        InteractiveHologramsAPI.onLoad(this);
+    }
+
+    @Override
+    public void onEnable() {
+        if (unsupportedServerVersion) {
+            getLogger().severe("Unsupported server version detected: " + Bukkit.getServer().getVersion());
+            getLogger().severe("Plugin will now be disabled.");
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        InteractiveHologramsAPI.onEnable();
+
+        InteractiveHolograms interactiveHolograms = InteractiveHologramsAPI.get();
+        interactiveHolograms.getFeatureManager().registerFeature(new DamageDisplayFeature());
+        interactiveHolograms.getFeatureManager().registerFeature(new HealingDisplayFeature());
+
+        CommandManager commandManager = interactiveHolograms.getCommandManager();
+        DisplayModule displayModule = interactiveHolograms.getDisplayModule();
+        DecentCommand mainCommand = new HologramsCommand(displayModule == null ? null : displayModule.getDisplaysCommand());
+        commandManager.setMainCommand(mainCommand);
+        commandManager.registerCommand(mainCommand);
+
+        // Enable NBT API to avoid lag spikes when parsing NBT for the first time.
+        NbtApiHook.initialize();
+    }
+
+    @Override
+    public void onDisable() {
+        if (unsupportedServerVersion) {
+            return;
+        }
+
+        InteractiveHologramsAPI.onDisable();
+    }
+
+}

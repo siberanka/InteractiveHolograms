@@ -10,6 +10,7 @@
 // Fabric needs this
 pluginManagement {
     repositories {
+        maven { url = 'https://repo.papermc.io/repository/maven-public/' }
         mavenCentral()
         maven { url = 'https://maven.fabricmc.net/' }
         gradlePluginPortal()
@@ -20,7 +21,7 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
-rootProject.name = 'DecentHolograms'
+rootProject.name = 'InteractiveHolograms'
 
 include ':shared'
 include ':platform-api'

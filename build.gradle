@@ -2,7 +2,7 @@ subprojects {
     apply plugin: "java"
     apply plugin: "maven-publish"
 
-    group = 'eu.decentsoftware.holograms'
+    group = 'com.siberanka.interactiveholograms'
 
     repositories {
         mavenCentral()

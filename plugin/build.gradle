@@ -3,8 +3,8 @@ plugins {
     alias(libs.plugins.shadow)
 }
 
-version = "2.10.1"
-description = "A lightweight yet very powerful hologram plugin with many features and configuration options."
+version = "3.0.0"
+description = "A packet-only, interactive hologram engine with safe YAML migration and advanced display controls."
 
 repositories {
     maven { url = "https://oss.sonatype.org/content/repositories/snapshots" }
@@ -28,7 +28,6 @@ dependencies {
     compileOnly(libs.placeholderapi)
     compileOnly(libs.headdatabase.api)
 
-    implementation(libs.bstats.bukkit)
     implementation(libs.item.nbt.api)
     implementation(libs.xseries)
     implementation(libs.configurate.yaml)
@@ -63,18 +62,17 @@ jar {
 }
 
 shadowJar {
-    archiveFileName.set("DecentHolograms-${version}.jar")
+    archiveFileName.set("InteractiveHolograms-${version}.jar")
 
-    relocate "org.bstats", "eu.decentsoftware.holograms.metrics"
-    relocate "de.tr7zw.changeme.nbtapi", "eu.decentsoftware.holograms.libs.nbtapi"
-    relocate "com.cryptomorin.xseries", "eu.decentsoftware.holograms.libs.xseries"
+    relocate "de.tr7zw.changeme.nbtapi", "com.siberanka.interactiveholograms.libs.nbtapi"
+    relocate "com.cryptomorin.xseries", "com.siberanka.interactiveholograms.libs.xseries"
 }
 
 publishing {
     publications {
         create("shadow", MavenPublication) {
             from(components["java"] as SoftwareComponent)
-            artifactId = "decentholograms"
+            artifactId = "interactiveholograms"
         }
     }
 }

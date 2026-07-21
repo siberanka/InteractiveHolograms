@@ -1,0 +1,142 @@
+# InteractiveHolograms 3.x - complete hologram YAML reference
+#
+# Copy this file into the "holograms" folder and rename it to a valid hologram
+# name (letters, numbers, underscore and dash; maximum 64 characters).
+# The schema manager adds missing entries automatically. If it must repair or
+# remove an invalid entry, it first creates a timestamped .backup-*.yml file.
+
+# Managed schema version. Current and only valid value: 3.
+schema-version: 3
+
+# Packet display type. Options: TEXT, ITEM, BLOCK.
+type: TEXT
+
+# World position and fixed rotation. yaw: -180..180; pitch: -90..90.
+location:
+  world: world
+  x: 0.0
+  y: 64.0
+  z: 0.0
+  yaw: 0.0
+  pitch: 0.0
+
+# Whether the hologram is rendered. Options: true, false.
+enabled: true
+
+# Maximum viewer distance in blocks. -1 uses defaults.display-range from
+# config.yml. Any non-negative number is an explicit per-hologram distance.
+visibility_distance: -1
+
+# Viewer policy. Options:
+# ALL                 - every player satisfying world and distance checks.
+# MANUAL              - only UUIDs added through the API for this runtime.
+# PERMISSION_REQUIRED - players with the permission below.
+visibility: ALL
+
+# Permission used by PERMISSION_REQUIRED. Leave empty to use:
+# interactiveholograms.hologram.<hologram-name>.view
+permission: ''
+
+# Whether command changes are stored. Options: true, false.
+# Setting this to false through a command removes the disk file while leaving
+# the runtime hologram active until reload/restart.
+persistent: true
+
+# Client-facing mode. Options:
+# CENTER     - faces the viewer on both axes.
+# FIXED      - uses location yaw and pitch.
+# HORIZONTAL - rotates around the vertical axis only.
+# VERTICAL   - rotates around the horizontal axis only.
+billboard: CENTER
+
+# Client-side per-axis scale. 1.0 is normal size; 0 hides that axis.
+scale_x: 1.0
+scale_y: 1.0
+scale_z: 1.0
+
+# Client-side translation in blocks, applied after the anchor position.
+translation_x: 0.0
+translation_y: 0.0
+translation_z: 0.0
+
+# Display shadow. Radius 0 disables the shadow; strength is normally 0.0..1.0.
+shadow_radius: 0.0
+shadow_strength: 1.0
+
+# Light overrides. Options: -1 (disabled), or 0..15.
+# If either channel is enabled, the other disabled channel is treated as 0.
+block_brightness: -1
+sky_brightness: -1
+
+# Glow color. Use "disabled", a supported named color, or a hex color where
+# the server implementation supports colored glow.
+glowing_color: disabled
+
+# Content refresh interval in ticks. -1 resolves once; positive values refresh
+# placeholders/animations on that interval.
+update_text_interval: -1
+
+# TEXT settings -------------------------------------------------------------
+# MiniMessage/legacy text lines. Used only when type is TEXT.
+text:
+  - '<gold><bold>InteractiveHolograms</bold>'
+  - '<gray>Packet-only holograms'
+
+# Draw the vanilla text shadow. Options: true, false.
+text_shadow: false
+
+# Render text through blocks. Options: true, false.
+see_through: false
+
+# Text alignment. Options: LEFT, CENTER, RIGHT.
+text_alignment: CENTER
+
+# ARGB/RGB hex background, named color, or "transparent".
+background: '#40000000'
+
+# Maximum line width before client wrapping. Valid range: 1..4096.
+line_width: 300
+
+# Text opacity. Valid range: 0 (invisible) .. 255 (opaque).
+text_opacity: 255
+
+# ITEM settings -------------------------------------------------------------
+# Used only when type is ITEM. Vanilla example: minecraft:diamond.
+# CraftEngine example: default:ruby.
+item: minecraft:apple
+
+# Item resolver. Options: AUTO, VANILLA, CRAFTENGINE.
+# AUTO treats minecraft:* as vanilla and other namespaces as CraftEngine IDs.
+item_provider: AUTO
+
+# Vanilla item transform. Options: NONE, THIRD_PERSON_LEFT_HAND,
+# THIRD_PERSON_RIGHT_HAND, FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND,
+# HEAD, GUI, GROUND, FIXED.
+item_display: NONE
+
+# BLOCK settings ------------------------------------------------------------
+# Used only when type is BLOCK. Use a vanilla namespaced block ID.
+block: minecraft:grass_block
+
+# Optional packet model bridge ---------------------------------------------
+# Options: NONE, BETTERMODEL, MYTHICMOBS.
+# BETTERMODEL creates a location-only BetterModel DummyTracker.
+# MYTHICMOBS is a source label and uses the BetterModel model ID below; it does
+# not spawn a MythicMob or any other real entity.
+model_provider: NONE
+
+# BetterModel model ID, for example "demon_knight". Empty disables the bridge.
+model: ''
+
+# Animation selection metadata. Empty uses the model's default/spawn behavior.
+animation: ''
+
+# Click actions. The first action automatically enables the packet hitbox; an
+# empty map disables it. Click groups: LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT.
+# Common actions: MESSAGE:<text>, COMMAND:<command>, CONSOLE:<command>,
+# SOUND:<sound>[:volume:pitch]. Use {player} for the player name.
+actions:
+  RIGHT:
+    - 'MESSAGE:<green>You clicked the hologram!'
+  SHIFT_RIGHT:
+    - 'CONSOLE:say {player} used the hologram'

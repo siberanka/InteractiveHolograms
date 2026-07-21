@@ -1,0 +1,10 @@
+package com.siberanka.interactiveholograms.nms.v26_2;
+
+import com.siberanka.interactiveholograms.nms.api.renderer.NmsSmallHeadHologramRenderer;
+
+class SmallHeadHologramRenderer extends HeadHologramRenderer implements NmsSmallHeadHologramRenderer {
+
+    SmallHeadHologramRenderer(EntityIdGenerator entityIdGenerator) {
+        super(entityIdGenerator, true);
+    }
+}

@@ -1,78 +1,67 @@
-# Decent Holograms
-[![SpigotMC Downloads](https://img.shields.io/spiget/downloads/96927?label=Downloads) 
-![SpigotMC Version](https://img.shields.io/spiget/version/96927?label=Release) 
-![Tested Versions](https://img.shields.io/spiget/tested-versions/96927?label=Supports)](https://www.spigotmc.org/resources/96927/) 
-[![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
->A lightweight yet very powerful hologram plugin with many features and configuration options.
+# InteractiveHolograms
 
-**Links:**
-- [Modrinth (Download)](https://modrinth.com/plugin/decentholograms)
-- [SpigotMC (Download)](https://www.spigotmc.org/resources/96927/)
-- [Discord (Support)](https://discord.decentsoftware.eu/)
-- [Wiki (Documentation)](https://wiki.decentholograms.eu/)
+[![CI](https://github.com/siberanka/InteractiveHolograms/actions/workflows/ci.yml/badge.svg)](https://github.com/siberanka/InteractiveHolograms/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/siberanka/InteractiveHolograms)](https://github.com/siberanka/InteractiveHolograms/releases/latest)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
-## Support
-We are mostly active on Discord so the best way to get support is joining our [Discord Server](https://discord.decentsoftware.eu). Also, it is okay to report bugs here on GitHub or in the 'Discussion' page on the [Spigot Page](https://decentholograms.eu) of Decent Holograms.
+InteractiveHolograms is a packet-only hologram engine for Bukkit-compatible Minecraft servers. Text, item, block, model and interaction data are sent directly to clients; holograms and their automatic click hitboxes are not added to the server world as persistent entities.
 
-## Minecraft Limitations
-- Text is always facing the player.
-- Text size or font cannot be changed.
-- Some entities make sounds. It only applies to a few entities like the Warden which makes this heartbeat sound.
-- Icons (#ICON:) are always going to rotate and bob up and down.
+## Highlights
 
-## Contributing [![PR's Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](http://makeapullrequest.com)
-Pull requests are welcome. But for major changes, please create an issue to discuss the changes first.
+- Packet-only rendering and automatic packet hitboxes for clickable holograms
+- Text, item and block display controls: billboard, rotation, scale, translation, light, shadow, background, opacity and alignment
+- Per-hologram visibility, permission, distance, persistence and update settings
+- LEFT, RIGHT, SHIFT_LEFT and SHIFT_RIGHT actions with server-side distance and cooldown validation
+- Safe YAML schema migration: missing values are supplied and repaired files are backed up before invalid values are removed
+- FancyHolograms YAML import with collision-safe overwrite backups
+- PlaceholderAPI and HeadDatabase compatibility
+- CraftEngine custom-item IDs and BetterModel packet-only dummy models; MythicMobs setups can reference their BetterModel model without spawning a mob
+- Full in-game editing through `/ih holograms ...`
+
+## Documentation
+
+The complete installation guide, YAML reference, commands, actions, migration procedure and integration examples are in the **[InteractiveHolograms Wiki](WIKI.md)**.
+
+The generated `hologram-example.yml`, `config.yml` and `attribute-defaults.yml` files also document every available value inline.
+
+## Quick start
+
+1. Download the latest jar from [GitHub Releases](https://github.com/siberanka/InteractiveHolograms/releases/latest).
+2. Put it in the server's `plugins` directory and restart the server.
+3. Create a hologram: `/ih holograms create TEXT welcome Welcome to the server!`
+4. Add an interaction: `/ih holograms action welcome add RIGHT MESSAGE:<green>Hello!`
+5. Edit display properties: `/ih holograms attribute welcome billboard FIXED`
+
+Holograms are stored as individual files in `plugins/InteractiveHolograms/holograms/`.
 
 ## Building
-Building DecentHolograms is very simple. All you need is JDK 8+, Gradle, Git and an IDE or Command Line.
 
-1. Clone the project to your machine using Git.
-2. Open the project using your IDE or open a command line at the projects' location.
-3. Run `gradle clean shadowJar` and DecentHolograms will build.
-4. You can find the jar at `./plugin/build/libs/DecentHolograms-VERSION.jar`
+JDK 21 is required to build the complete multi-version NMS matrix.
 
-## API [![](https://jitpack.io/v/decentsoftware-eu/decentholograms.svg)](https://jitpack.io/#decentsoftware-eu/decentholograms)
-How to get DecentHolograms API into your project:
-
-> Replace `VERSION` with the current version of DecentHolograms. (Latest release)
-
-<details>
-<summary>Maven</summary>
-
-```xml
-<repositories>
-    <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
-    </repository>
-</repositories>
+```bash
+./gradlew clean test shadowJar
 ```
 
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.github.decentsoftware-eu</groupId>
-        <artifactId>decentholograms</artifactId>
-        <version>VERSION</version>
-        <scope>provided</scope>
-    </dependency>
-</dependencies>
-```
-</details>
+The release artifact is written to `plugin/build/libs/InteractiveHolograms-<version>.jar`.
 
-<details>
-<summary>Gradle</summary>
+## API
+
+The Java package is `com.siberanka.interactiveholograms`. JitPack coordinates:
 
 ```groovy
 repositories {
-    maven { url 'https://jitpack.io' }
+    maven { url = 'https://jitpack.io' }
 }
 
 dependencies {
-    compileOnly 'com.github.decentsoftware-eu:decentholograms:VERSION'
+    compileOnly 'com.github.siberanka:InteractiveHolograms:VERSION'
 }
 ```
-</details>
 
-## bStats
-[![](https://bstats.org/signatures/bukkit/DecentHolograms.svg)](https://bstats.org/plugin/bukkit/DecentHolograms)
+Replace `VERSION` with a published tag such as `v3.0.0`.
+
+## Contributing and security
+
+Issues and pull requests are welcome. For security-sensitive reports, avoid publishing exploit details until a maintainer has acknowledged the report. Changes should preserve the packet-only invariant, validate packet-originated input on the main server thread, and include tests where practical.
+
+InteractiveHolograms is licensed under [GPL-3.0](LICENSE). Authors: d0by and siberanka.
