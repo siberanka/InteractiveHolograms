@@ -1,6 +1,6 @@
 package com.siberanka.interactiveholograms.api.utils;
 
-import com.siberanka.interactiveholograms.api.utils.color.IridiumColorAPI;
+import com.siberanka.interactiveholograms.platform.bukkit.text.LegacyCachingBukkitTextFormatter;
 import com.siberanka.interactiveholograms.semver.SemanticVersion;
 import lombok.experimental.UtilityClass;
 import org.bukkit.command.CommandSender;
@@ -15,6 +15,8 @@ public class Common {
     public static final String NAME_REGEX = "[a-zA-Z0-9_-]+";
 
     private static final Pattern SPACING_CHARS_REGEX;
+    private static final LegacyCachingBukkitTextFormatter COLOR_FORMATTER =
+            new LegacyCachingBukkitTextFormatter();
     public static String PREFIX;
 
     static {
@@ -45,7 +47,7 @@ public class Common {
      */
 
     public static String colorize(String string) {
-        return IridiumColorAPI.process(string);
+        return COLOR_FORMATTER.format(string);
     }
 
     public static List<String> colorize(List<String> list) {

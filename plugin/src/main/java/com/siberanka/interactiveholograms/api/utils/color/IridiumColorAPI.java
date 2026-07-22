@@ -1,6 +1,7 @@
 package com.siberanka.interactiveholograms.api.utils.color;
 
 import com.google.common.collect.ImmutableMap;
+import com.siberanka.interactiveholograms.api.InteractiveHologramsAPI;
 import com.siberanka.interactiveholograms.api.Settings;
 import com.siberanka.interactiveholograms.api.utils.color.caching.LruCache;
 import com.siberanka.interactiveholograms.api.utils.color.patterns.GradientPattern;
@@ -22,7 +23,7 @@ public class IridiumColorAPI {
     private static final ReflectMethod METHOD_OF = new ReflectMethod(ChatColor.class, "of", Color.class);
     private static final List<String> SPECIAL_COLORS = Arrays.asList("&l", "&n", "&o", "&k", "&m");
 
-    private static final LruCache LRU_CACHE = new LruCache(Settings.DEFAULT_LRU_CACHE_SIZE);
+    private static volatile LruCache lruCache;
 
     private IridiumColorAPI() {
         throw new UnsupportedOperationException("Utility class");
@@ -71,7 +72,8 @@ public class IridiumColorAPI {
      */
     @Nonnull
     public static String processCached(@Nonnull String string) {
-        String result = LRU_CACHE.getResult(string);
+        LruCache cache = getCache();
+        String result = cache.getResult(string);
         if (result != null) {
             return result;
         }
@@ -80,8 +82,20 @@ public class IridiumColorAPI {
             string = pattern.process(string);
         }
         string = ChatColor.translateAlternateColorCodes('&', string);
-        LRU_CACHE.put(input, string);
+        cache.put(input, string);
         return string;
+    }
+
+    private static LruCache getCache() {
+        LruCache current = lruCache;
+        if (current != null) return current;
+        synchronized (IridiumColorAPI.class) {
+            if (lruCache == null) {
+                int size = InteractiveHologramsAPI.isRunning() ? Settings.DEFAULT_LRU_CACHE_SIZE : 500;
+                lruCache = new LruCache(Math.max(5, size));
+            }
+            return lruCache;
+        }
     }
 
     /**

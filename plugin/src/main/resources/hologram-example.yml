@@ -77,10 +77,22 @@ glowing_color: disabled
 update_text_interval: -1
 
 # TEXT settings -------------------------------------------------------------
-# MiniMessage/legacy text lines. Used only when type is TEXT.
+# Formatted text lines. Used only when type is TEXT. Every format may be mixed:
+# - MiniMessage: <aqua>, <#12ab34>, <bold>, <gradient:#f00:#00f>,
+#   <rainbow>, <transition:#f00:#00f:0.5>, <reset>, <newline> and <br>.
+# - Legacy: &a, §a, &l, plus long RGB forms such as &x&1&2&A&B&3&4.
+# - Hex: #12AB34, &#12AB34, §#12AB34 and {#12AB34}.
+# - Historical: <#ff0000>gradient</#0000ff> and
+#   <RAINBOW100>rainbow</RAINBOW>.
+# - ANSI/console: ESC[31m, ESC[38;5;196m and ESC[38;2;18;171;52m.
+# PlaceholderAPI runs before color parsing. Supported forms are
+# %identifier_parameter%, {identifier_parameter} and %rel_identifier_parameter%.
+# Placeholder output may itself contain formatting or another placeholder; nested
+# resolution is capped at three passes and all processed lines are length-bounded.
+# Quote YAML values containing #, &, < or >, as in the examples below.
 text:
   - '<gold><bold>InteractiveHolograms</bold>'
-  - '<gray>Packet-only holograms'
+  - '<gray>Welcome, <aqua>%player_name%</aqua>!'
 
 # Draw the vanilla text shadow. Options: true, false.
 text_shadow: false

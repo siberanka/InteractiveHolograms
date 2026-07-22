@@ -31,6 +31,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.regex.Pattern;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -99,6 +101,32 @@ class PAPITest {
 
             assertEquals("Test replaced", result);
             mockedPlaceholderAPI.verify(() -> PlaceholderAPI.setPlaceholders(player, "Test %placeholder%"));
+        }
+    }
+
+    @Test
+    void processesStandardBracketAndRelationalPlaceholdersInOrder() {
+        try (MockedStatic<InteractiveHologramsAPI> mockedInteractiveHologramsAPI = mockStatic(InteractiveHologramsAPI.class);
+             MockedStatic<PlaceholderAPI> mockedPlaceholderAPI = mockStatic(PlaceholderAPI.class)) {
+            mockedInteractiveHologramsAPI.when(InteractiveHologramsAPI::get).thenReturn(plugin);
+            when(plugin.getIntegrationAvailabilityService()).thenReturn(integrationAvailabilityService);
+            when(integrationAvailabilityService.isIntegrationAvailable(Integration.PLACEHOLDER_API))
+                    .thenReturn(true);
+
+            String input = "Hello %player_name% {server_name} %rel_same%";
+            String standard = "Hello NoxAves {server_name} %rel_same%";
+            String bracket = "Hello NoxAves Skyblock %rel_same%";
+            mockedPlaceholderAPI.when(() -> PlaceholderAPI.setPlaceholders(player, input)).thenReturn(standard);
+            mockedPlaceholderAPI.when(() -> PlaceholderAPI.setBracketPlaceholders(player, standard)).thenReturn(bracket);
+            mockedPlaceholderAPI.when(PlaceholderAPI::getRelationalPlaceholderPattern)
+                    .thenReturn(Pattern.compile("%rel_[^%]+%"));
+            mockedPlaceholderAPI.when(() -> PlaceholderAPI.setRelationalPlaceholders(player, player, bracket))
+                    .thenReturn("Hello NoxAves Skyblock yes");
+
+            assertEquals("Hello NoxAves Skyblock yes", PAPI.setPlaceholders(player, input));
+            mockedPlaceholderAPI.verify(() -> PlaceholderAPI.setPlaceholders(player, input));
+            mockedPlaceholderAPI.verify(() -> PlaceholderAPI.setBracketPlaceholders(player, standard));
+            mockedPlaceholderAPI.verify(() -> PlaceholderAPI.setRelationalPlaceholders(player, player, bracket));
         }
     }
 }

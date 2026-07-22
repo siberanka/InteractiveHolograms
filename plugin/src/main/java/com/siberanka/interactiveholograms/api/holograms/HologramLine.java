@@ -7,9 +7,9 @@ import com.siberanka.interactiveholograms.api.Settings;
 import com.siberanka.interactiveholograms.api.holograms.enums.EnumFlag;
 import com.siberanka.interactiveholograms.api.holograms.enums.HologramLineType;
 import com.siberanka.interactiveholograms.api.holograms.objects.HologramObject;
+import com.siberanka.interactiveholograms.api.utils.Common;
 import com.siberanka.interactiveholograms.api.utils.Log;
 import com.siberanka.interactiveholograms.api.utils.PAPI;
-import com.siberanka.interactiveholograms.api.utils.color.IridiumColorAPI;
 import com.siberanka.interactiveholograms.api.utils.entity.HologramEntity;
 import com.siberanka.interactiveholograms.api.utils.items.HologramItem;
 import com.siberanka.interactiveholograms.nms.api.NmsHologramPartData;
@@ -355,7 +355,7 @@ public class HologramLine extends HologramObject {
             }
         }
 
-        return IridiumColorAPI.processCached(string);
+        return Common.colorize(string);
     }
 
     @NonNull

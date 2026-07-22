@@ -38,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 class DisplayPlaceholderServiceTest {
@@ -124,6 +125,35 @@ class DisplayPlaceholderServiceTest {
             String result = service.replacePlaceholders("input", context);
 
             assertEquals("step2", result);
+        }
+
+        @Test
+        void replacePlaceholders_resolvesNestedProviderOutputWithBoundedPasses() {
+            DisplayRenderContext context = mock(DisplayRenderContext.class);
+            PlatformPlayer player = createPlayer("Steve");
+            PlaceholderProvider provider = mock(PlaceholderProvider.class);
+            when(context.getPlayer()).thenReturn(player);
+            when(platformAdapter.getPlaceholderProviders()).thenReturn(Collections.singletonList(provider));
+            when(provider.containsPlaceholders(any())).thenReturn(true);
+            when(provider.replace(eq("%outer%"), any())).thenReturn("%inner%");
+            when(provider.replace(eq("%inner%"), any())).thenReturn("<aqua>ready</aqua>");
+            when(provider.replace(eq("<aqua>ready</aqua>"), any())).thenReturn("<aqua>ready</aqua>");
+
+            assertEquals("<aqua>ready</aqua>", service.replacePlaceholders("%outer%", context));
+            verify(provider, times(3)).replace(any(), any());
+        }
+
+        @Test
+        void replacePlaceholders_preservesContentWhenProviderReturnsNull() {
+            DisplayRenderContext context = mock(DisplayRenderContext.class);
+            PlatformPlayer player = createPlayer("Steve");
+            PlaceholderProvider provider = mock(PlaceholderProvider.class);
+            when(context.getPlayer()).thenReturn(player);
+            when(platformAdapter.getPlaceholderProviders()).thenReturn(Collections.singletonList(provider));
+            when(provider.containsPlaceholders(any())).thenReturn(true);
+            when(provider.replace(any(), any())).thenReturn(null);
+
+            assertEquals("%value%", service.replacePlaceholders("%value%", context));
         }
 
         @Test

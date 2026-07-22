@@ -5,6 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CommonTest {
 
@@ -45,6 +47,15 @@ class CommonTest {
 
         assertEquals(expectedResult, result,
                 String.format("Expected isVersionHigher('%s', '%s') to return %b", currentVersion, newVersion, expectedResult));
+    }
+
+    @org.junit.jupiter.api.Test
+    void colorizeSupportsMiniMessageAndLegacyTogether() {
+        String result = Common.colorize("<aqua>Hello</aqua> &7world");
+
+        assertTrue(result.contains("\u00a7bHello"));
+        assertTrue(result.contains("\u00a77world"));
+        assertFalse(result.contains("<aqua>"));
     }
 
 }

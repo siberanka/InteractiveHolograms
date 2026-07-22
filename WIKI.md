@@ -106,6 +106,31 @@ Text-only keys are `text`, `text_shadow`, `see_through`, `text_alignment` (`LEFT
 
 On load, the schema manager adds missing known entries, normalizes case and ranges, and removes unknown root keys. A backup is made before any repaired file is saved.
 
+### Text formatting and PlaceholderAPI
+
+Text holograms and `MESSAGE` click actions accept mixed formatting. PlaceholderAPI is resolved first, so a placeholder expansion may safely return any supported color syntax:
+
+| Syntax | Examples |
+|---|---|
+| MiniMessage colors | `<aqua>Text</aqua>`, `<#12AB34>RGB</#12AB34>` |
+| MiniMessage effects | `<bold>`, `<italic>`, `<underlined>`, `<strikethrough>`, `<obfuscated>`, `<gradient:#ff0000:#0000ff>`, `<rainbow>`, `<transition:#f00:#00f:0.5>`, `<reset>`, `<newline>`, `<br>` |
+| Legacy | `&a`, `§a`, `&l`, `&x&1&2&A&B&3&4` |
+| Hex aliases | `#12AB34`, `&#12AB34`, `§#12AB34`, `{#12AB34}` |
+| Historical IH/Iridium | `<#ff0000>Gradient</#0000ff>`, `<RAINBOW100>Rainbow</RAINBOW>` |
+| ANSI/console | 16-color SGR, 256-color `ESC[38;5;196m`, true-color `ESC[38;2;18;171;52m` |
+
+Supported PlaceholderAPI forms are standard `%identifier_parameter%`, bracket `{identifier_parameter}`, and relational `%rel_identifier_parameter%`. Relational placeholders use the current viewer as both relational contexts because a packet hologram has one viewer context and no server-side target entity. Placeholder output is resolved for up to three passes, allowing bounded nested expansions without infinite recursion. Results and formatter input are length-bounded, malformed formatting remains visible instead of interrupting rendering, and recurring output is kept in a bounded thread-safe LRU cache.
+
+```yaml
+text:
+  - '<gradient:#00ffff:#5555ff><bold>Skyblock</bold></gradient>'
+  - '<gray>Welcome, <aqua>%player_name%</aqua>!'
+  - '&eBalance: &#55FF55%vault_eco_balance_formatted%'
+  - '{#AAAAAA}Server: {server_name}'
+```
+
+Always quote YAML text containing `#`, `&`, `<` or `>`. Interactive MiniMessage tags such as `<click>` and `<hover>` are deliberately not executed inside hologram text; use the packet hitbox `actions` section for authenticated, distance-checked clicks. MiniMessage syntax follows the [Kyori format reference](https://docs.advntr.dev/minimessage/format.html), and expansion syntax follows the [PlaceholderAPI developer reference](https://wiki.placeholderapi.com/developers/using-placeholderapi/).
+
 ### Complete hologram YAML example
 
 The following file is valid as `plugins/InteractiveHolograms/holograms/complete-example.yml`. It deliberately includes every public entry; only the content entries matching `type` are rendered.
@@ -253,7 +278,7 @@ Current FancyHolograms releases may migrate YAML into JSON. Import the preserved
 
 ## Optional integrations
 
-- **PlaceholderAPI:** placeholders are resolved for viewers in text and supported attributes.
+- **PlaceholderAPI:** standard, bracket and relational placeholders are resolved per viewer before formatting; bounded nested output is supported.
 - **HeadDatabase:** skull identifiers remain available through item/skull content support.
 - **CraftEngine:** use a namespaced ID such as `default:ruby`; `AUTO` resolves non-`minecraft` IDs through CraftEngine's public API.
 - **BetterModel:** `model_provider: BETTERMODEL` creates a location-only DummyTracker.

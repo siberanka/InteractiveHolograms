@@ -28,6 +28,8 @@ import java.util.List;
 
 public class DisplayPlaceholderService {
 
+    private static final int MAX_PLACEHOLDER_PASSES = 3;
+    private static final int MAX_RESULT_LENGTH = 16_384;
     private final PlatformAdapter platformAdapter;
 
     public DisplayPlaceholderService(PlatformAdapter platformAdapter) {
@@ -47,8 +49,11 @@ public class DisplayPlaceholderService {
 
         List<PlaceholderProvider> placeholderProviders = platformAdapter.getPlaceholderProviders();
         for (PlaceholderProvider placeholderProvider : placeholderProviders) {
-            if (placeholderProvider.containsPlaceholders(content)) {
-                return true;
+            try {
+                if (placeholderProvider.containsPlaceholders(content)) return true;
+            } catch (RuntimeException e) {
+                Log.warn("Failed to inspect placeholders using provider '%s'.",
+                        placeholderProvider.getClass().getName(), e);
             }
         }
 
@@ -58,14 +63,27 @@ public class DisplayPlaceholderService {
     private String replacePlatformPlaceholders(String content, DisplayRenderContext context) {
         PlaceholderContext placeholderContext = createPlaceholderContext(context);
         List<PlaceholderProvider> placeholderProviders = platformAdapter.getPlaceholderProviders();
-        for (PlaceholderProvider placeholderProvider : placeholderProviders) {
-            try {
-                content = placeholderProvider.replace(content, placeholderContext);
-            } catch (Exception e) {
-                Log.warn("Failed to resolve placeholders using provider '%s'.", placeholderProvider.getClass().getName(), e);
+        for (int pass = 0; pass < MAX_PLACEHOLDER_PASSES; pass++) {
+            String beforePass = content;
+            for (PlaceholderProvider placeholderProvider : placeholderProviders) {
+                try {
+                    if (pass > 0 && !placeholderProvider.containsPlaceholders(content)) continue;
+                    String replaced = placeholderProvider.replace(content, placeholderContext);
+                    if (replaced != null) content = bound(replaced);
+                } catch (Exception e) {
+                    Log.warn("Failed to resolve placeholders using provider '%s'.", placeholderProvider.getClass().getName(), e);
+                }
             }
+            if (content.equals(beforePass)) break;
         }
         return content;
+    }
+
+    private String bound(String content) {
+        if (content.length() <= MAX_RESULT_LENGTH) return content;
+        int end = MAX_RESULT_LENGTH;
+        if (Character.isHighSurrogate(content.charAt(end - 1))) end--;
+        return content.substring(0, end);
     }
 
     private PlaceholderContext createPlaceholderContext(DisplayRenderContext displayRenderContext) {

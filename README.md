@@ -15,7 +15,8 @@ InteractiveHolograms is a packet-only hologram engine for Bukkit-compatible Mine
 - Safe YAML schema migration: missing values are supplied and repaired files are backed up before invalid values are removed
 - One `/ih import` workflow for DecentHolograms, FancyHolograms, HolographicDisplays, CMI, FutureHolograms, GHolo and Holograms
 - Bounded, asynchronous import with path confinement, atomic writes and collision-safe overwrite backups
-- PlaceholderAPI and HeadDatabase compatibility
+- Mixed MiniMessage, legacy `&`/`§`, RGB/hex, gradient, rainbow and 16/256/true-color ANSI codes
+- PlaceholderAPI standard, bracket, relational and bounded nested expansion support
 - CraftEngine custom-item IDs plus entity-free BetterModel and ModelEngine models
 - Dynamic command completion for installed BetterModel models, MythicMobs mob types, ModelEngine models and their discoverable animations
 - Full in-game editing through `/ih holograms ...`
@@ -64,7 +65,7 @@ dependencies {
 }
 ```
 
-Replace `VERSION` with a published tag such as `v3.2.1`.
+Replace `VERSION` with a published tag such as `v3.3.0`.
 
 ## Contributing and security
 

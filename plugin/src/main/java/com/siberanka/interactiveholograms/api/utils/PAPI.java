@@ -28,15 +28,36 @@ public class PAPI {
      * @return The string with replaced placeholders.
      */
     public static String setPlaceholders(Player player, String string) {
-        if (isAvailable()) {
+        if (isAvailable() && string != null) {
+            String result = string;
             try {
-                return PlaceholderAPI.setPlaceholders(player, string);
-            } catch (Exception e) {
-                Log.warn("Failed to replace placeholders in string '%s' for player '%s'."
-                        + " This issue likely originates from a placeholder provided by another plugin."
-                        + " Please contact the developer(s) of any plugin mentioned in the stack trace.", e, string, player.getName());
+                result = PlaceholderAPI.setPlaceholders(player, result);
+                if (result == null) result = string;
+            } catch (RuntimeException e) {
+                logFailure(e, string, player, "standard");
                 return string;
             }
+
+            try {
+                String bracketResult = PlaceholderAPI.setBracketPlaceholders(player, result);
+                if (bracketResult != null) result = bracketResult;
+            } catch (RuntimeException e) {
+                logFailure(e, result, player, "bracket");
+            } catch (LinkageError ignored) {
+                // Older PlaceholderAPI builds may not expose bracket placeholders.
+            }
+
+            try {
+                if (player != null && containsRelationalPlaceholders(result)) {
+                    String relationalResult = PlaceholderAPI.setRelationalPlaceholders(player, player, result);
+                    if (relationalResult != null) result = relationalResult;
+                }
+            } catch (RuntimeException e) {
+                logFailure(e, result, player, "relational");
+            } catch (LinkageError ignored) {
+                // Retain standard/bracket output when an older PAPI has no relational API.
+            }
+            return result;
         }
         return string;
     }
@@ -62,10 +83,30 @@ public class PAPI {
      * @return True if the string contains any placeholders, false otherwise.
      */
     public static boolean containsPlaceholders(String string) {
-        if (isAvailable()) {
-            return PlaceholderAPI.containsPlaceholders(string);
+        if (isAvailable() && string != null) {
+            try {
+                return PlaceholderAPI.containsPlaceholders(string)
+                        || PlaceholderAPI.containsBracketPlaceholders(string)
+                        || containsRelationalPlaceholders(string);
+            } catch (RuntimeException | LinkageError ignored) {
+                // Syntax pre-checks preserve compatibility with older or partially loaded PAPI builds.
+                return string.indexOf('%') >= 0 || (string.indexOf('{') >= 0 && string.indexOf('}') >= 0);
+            }
         }
         return false;
+    }
+
+    private static boolean containsRelationalPlaceholders(String string) {
+        if (string == null || string.indexOf("%rel_") < 0) return false;
+        return PlaceholderAPI.getRelationalPlaceholderPattern() != null
+                && PlaceholderAPI.getRelationalPlaceholderPattern().matcher(string).find();
+    }
+
+    private static void logFailure(Throwable failure, String string, Player player, String syntax) {
+        Log.warn("Failed to replace %s placeholders in string '%s' for player '%s'."
+                        + " This issue likely originates from a placeholder provided by another plugin."
+                        + " Please contact the developer(s) of any plugin mentioned in the stack trace.",
+                failure, syntax, string, player == null ? "console" : player.getName());
     }
 
 }
