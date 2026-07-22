@@ -9,7 +9,7 @@ This document covers InteractiveHolograms 3.x. It is the canonical reference for
 - [Creating and editing holograms](#creating-and-editing-holograms)
 - [Hologram YAML reference](#hologram-yaml-reference)
 - [Click actions and hitboxes](#click-actions-and-hitboxes)
-- [DecentHolograms and FancyHolograms import](#decentholograms-and-fancyholograms-import)
+- [Importing other hologram plugins](#importing-other-hologram-plugins)
 - [Optional integrations](#optional-integrations)
 - [Configuration and permissions](#configuration-and-permissions)
 - [Backups and troubleshooting](#backups-and-troubleshooting)
@@ -56,8 +56,8 @@ Core commands:
 | `/ih holograms reset-attribute <name> <attribute>` | Restore an attribute default |
 | `/ih holograms setting <name> <setting> [value]` | Edit visibility, permission, persistence or hitbox metadata |
 | `/ih holograms action ...` | Manage click actions |
-| `/ih holograms import-fancy ...` | Import FancyHolograms YAML |
-| `/ih holograms import-decent ...` | Import DecentHolograms YAML files |
+| `/ih import <source> [path] [--overwrite]` | Convert any supported provider into modern IH YAML |
+| `/ih convert ...`, `/ih migrate ...` | Aliases of the same modern import command |
 | `/ih holograms model <name> <provider> [model] [animation]` | Select an installed model/mob; arguments tab-complete dynamically |
 
 Frequently used attributes include `billboard`, `scale`, `translation`, `yaw`, `pitch`, `brightness`, `shadow-radius`, `shadow-strength`, `glow-color`, `alignment`, `text-shadow`, `see-through`, `background-color`, `line-width`, `text-opacity`, `display-type`, `enchanted`, `leather-color` and `skull-texture`. Run `list-attributes` because applicable attributes depend on hologram type and server capability.
@@ -198,9 +198,40 @@ Common action types:
 
 Use `{player}` for player-name replacement. Packet input is revalidated against world and an eight-block interaction limit. `click-cooldown` in `config.yml` controls repeated activation.
 
-## DecentHolograms and FancyHolograms import
+## Importing other hologram plugins
 
-DecentHolograms stores one YAML file per hologram. The importer reads a directory or a single file, converts the first page into the modern packet schema, recognizes text plus single-line `#ICON`, `#HEAD`, `#SMALLHEAD` and `#ENTITY` visuals, carries location, visibility range, update interval, permission and page click actions, and reports a warning when additional pages require manual review. Imported `#ENTITY` lines become zero-scale ITEM anchors with a `MYTHICMOBS` model ID; they remain entity-free and need a matching BetterModel or ModelEngine visual:
+The main migration command is:
+
+```text
+/ih import <source> [relative-path] [--overwrite]
+```
+
+`source` and its default path are tab-completed. The supported formats are:
+
+| Source | Default input |
+|---|---|
+| `DecentHolograms` | `plugins/DecentHolograms/holograms/` |
+| `FancyHolograms` | `plugins/FancyHolograms/holograms.yml` |
+| `HolographicDisplays` | `plugins/HolographicDisplays/database.yml` |
+| `CMI` | `plugins/CMI/Saves/holograms.yml`, then the older CMI path |
+| `FutureHolograms` | `plugins/FutureHolograms/holograms.yml` |
+| `GHolo` | `plugins/GHolo/data/h.data` |
+| `Holograms` | `plugins/Holograms/holograms.yml` |
+
+Examples:
+
+```text
+/ih import DecentHolograms
+/ih import FancyHolograms --overwrite
+/ih import HolographicDisplays plugins/HolographicDisplays/database.yml
+/ih import CMI
+```
+
+All formats are written to `plugins/InteractiveHolograms/holograms/` using the current modern schema. Multi-page sources become `<name>_page2`, `<name>_page3`, and so on. Mixed text/item/entity line stacks are split into positioned `<name>_line2` files so visual lines are not serialized as literal text. `ICON`, `ITEM`, `HEAD`, `SMALLHEAD` and `ENTITY` markers are converted to packet display equivalents; entity markers become zero-scale anchors resolved through an installed packet model backend.
+
+Imports execute off the server thread and only the final display reload returns to the main thread. Only one import may run at a time. Input paths are confined to the server directory, source size/output counts are bounded, writes are atomic and malformed entries fail closed.
+
+DecentHolograms stores one YAML file per hologram. The importer reads a directory or a single file, converts every page into the modern packet schema, recognizes text plus `#ICON`, `#HEAD`, `#SMALLHEAD` and `#ENTITY` visuals, and carries location, visibility range, update interval, permission and page click actions. Imported `#ENTITY` lines become zero-scale ITEM anchors with a `MYTHICMOBS` model ID; they remain entity-free and need a matching BetterModel or ModelEngine visual:
 
 ```text
 /ih holograms import-decent
@@ -247,7 +278,10 @@ ih.command.displays.setting
 ih.command.displays.action
 ih.command.displays.import
 ih.command.displays.model
+ih.command.import
 ```
+
+`check-for-updates` controls the asynchronous startup check against this repository's GitHub latest-release endpoint. When a newer semantic version is available, administrators receive a validated, clickable GitHub Release link. No update file is downloaded or executed automatically.
 
 `PERMISSION_REQUIRED` visibility defaults to `interactiveholograms.hologram.<name>.view` when `permission` is empty.
 

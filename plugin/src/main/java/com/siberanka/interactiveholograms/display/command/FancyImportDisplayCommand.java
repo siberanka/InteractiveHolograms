@@ -5,8 +5,10 @@ import com.siberanka.interactiveholograms.api.commands.CommandHandler;
 import com.siberanka.interactiveholograms.api.commands.CommandInfo;
 import com.siberanka.interactiveholograms.api.commands.DecentCommand;
 import com.siberanka.interactiveholograms.api.commands.TabCompleteHandler;
+import com.siberanka.interactiveholograms.api.utils.scheduler.S;
 import com.siberanka.interactiveholograms.display.DisplayService;
-import com.siberanka.interactiveholograms.display.config.FancyHologramsImporter;
+import com.siberanka.interactiveholograms.display.config.HologramImportService;
+import com.siberanka.interactiveholograms.display.config.HologramImportSource;
 import org.bukkit.ChatColor;
 
 import java.util.Arrays;
@@ -19,10 +21,10 @@ import java.util.Arrays;
 )
 final class FancyImportDisplayCommand extends DecentCommand {
 
-    private final FancyHologramsImporter importer;
+    private final HologramImportService importer;
     private final DisplayService displayService;
 
-    FancyImportDisplayCommand(FancyHologramsImporter importer, DisplayService displayService) {
+    FancyImportDisplayCommand(HologramImportService importer, DisplayService displayService) {
         super("import-fancy");
         this.importer = importer;
         this.displayService = displayService;
@@ -35,14 +37,21 @@ final class FancyImportDisplayCommand extends DecentCommand {
             String path = Arrays.stream(args)
                     .filter(argument -> !"--overwrite".equalsIgnoreCase(argument))
                     .findFirst().orElse(null);
-            try {
-                FancyHologramsImporter.ImportResult result = importer.importYaml(path, overwrite);
-                displayService.reload();
-                sender.sendMessage(ChatColor.GREEN + "FancyHolograms import complete: "
-                        + result.getImported() + " imported, " + result.getSkipped() + " skipped.");
-            } catch (Exception exception) {
-                sender.sendMessage(ChatColor.RED + "FancyHolograms import failed: " + exception.getMessage());
-            }
+            sender.sendMessage(ChatColor.YELLOW + "FancyHolograms import started...");
+            S.async(() -> {
+                try {
+                    HologramImportService.ImportResult result = importer.importFrom(
+                            HologramImportSource.FANCY_HOLOGRAMS, path, overwrite);
+                    S.sync(() -> {
+                        displayService.reload();
+                        sender.sendMessage(ChatColor.GREEN + "FancyHolograms import complete: "
+                                + result.getImported() + " imported, " + result.getSkipped() + " skipped.");
+                    });
+                } catch (Exception exception) {
+                    S.sync(() -> sender.sendMessage(ChatColor.RED
+                            + "FancyHolograms import failed: " + exception.getMessage()));
+                }
+            });
             return true;
         };
     }

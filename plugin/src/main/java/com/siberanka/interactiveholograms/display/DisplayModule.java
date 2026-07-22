@@ -82,8 +82,7 @@ import com.siberanka.interactiveholograms.display.command.DisplaysCommand;
 import com.siberanka.interactiveholograms.display.config.DisplayConfigMapper;
 import com.siberanka.interactiveholograms.display.config.DisplayPersistenceService;
 import com.siberanka.interactiveholograms.display.config.DisplayRepository;
-import com.siberanka.interactiveholograms.display.config.FancyHologramsImporter;
-import com.siberanka.interactiveholograms.display.config.DecentHologramsImporter;
+import com.siberanka.interactiveholograms.display.config.HologramImportService;
 import com.siberanka.interactiveholograms.display.config.YamlConfigurationLoaderFactory;
 import com.siberanka.interactiveholograms.display.config.dto.ConfigAttribute;
 import com.siberanka.interactiveholograms.display.config.dto.ConfigDefaultAttribute;
@@ -144,6 +143,7 @@ public class DisplayModule {
     private final LegacyCachingBukkitTextFormatter textFormatter;
     private final DisplayInteractionService interactionService;
     private final ModelDisplayService modelDisplayService;
+    private final HologramImportService hologramImportService;
 
     public DisplayModule(JavaPlugin plugin, AnimationManager animationManager, PlatformAdapter platformAdapter) {
         this.plugin = plugin;
@@ -182,11 +182,11 @@ public class DisplayModule {
                 attributeDefinitionRegistry, commandHandlerRegistry, attributeDefaultService);
         DisplayAttributeService displayAttributeService = new DisplayAttributeService(attributeDefinitionRegistry);
         java.nio.file.Path serverRoot = resolveServerRoot(plugin);
+        this.hologramImportService = new HologramImportService(serverRoot, plugin.getDataFolder().toPath());
         ModelCatalogService modelCatalog = new ModelCatalogService();
         this.displaysCommand = new DisplaysCommand(
                 displayService, displayCloneService, attributeCommandService, attributeDefaultService, displayAttributeService,
-                platformAdapter.getMaterialService(), new FancyHologramsImporter(serverRoot, plugin.getDataFolder().toPath()),
-                new DecentHologramsImporter(serverRoot, plugin.getDataFolder().toPath()), modelCatalog);
+                platformAdapter.getMaterialService(), hologramImportService, modelCatalog);
         this.displayUpdateScheduler = new DisplayUpdateScheduler(plugin, displayService, renderCoordinator);
         this.interactionService = new DisplayInteractionService(
                 plugin,
@@ -308,5 +308,9 @@ public class DisplayModule {
 
     public DisplaysCommand getDisplaysCommand() {
         return displaysCommand;
+    }
+
+    public HologramImportService getHologramImportService() {
+        return hologramImportService;
     }
 }

@@ -62,4 +62,18 @@ class DecentHologramsImporterTest {
         assertEquals("ITEM", output.getString("type"));
         assertEquals("minecraft:diamond", output.getString("item"));
     }
+
+    @Test
+    void preservesEveryPageAndMixedVisualLine() throws Exception {
+        Path source = root.resolve("legacy"); Files.createDirectories(source);
+        Files.write(source.resolve("mixed.yml"), ("location: world:0:64:0\npages:\n"
+                + "  - lines:\n      - content: text\n      - content: '#ICON: DIAMOND'\n"
+                + "  - lines:\n      - content: second\n").getBytes(StandardCharsets.UTF_8));
+        Path data = root.resolve("data");
+        DecentHologramsImporter.ImportResult result = new DecentHologramsImporter(root, data).importYaml("legacy", false);
+        assertEquals(3, result.getImported());
+        assertTrue(Files.isRegularFile(data.resolve("holograms/mixed.yml")));
+        assertTrue(Files.isRegularFile(data.resolve("holograms/mixed_line2.yml")));
+        assertTrue(Files.isRegularFile(data.resolve("holograms/mixed_page2.yml")));
+    }
 }

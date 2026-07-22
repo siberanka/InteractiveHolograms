@@ -44,7 +44,9 @@ public class InteractiveHologramsPlugin extends JavaPlugin {
 
         CommandManager commandManager = interactiveHolograms.getCommandManager();
         DisplayModule displayModule = interactiveHolograms.getDisplayModule();
-        DecentCommand mainCommand = new HologramsCommand(displayModule == null ? null : displayModule.getDisplaysCommand());
+        DecentCommand mainCommand = new HologramsCommand(
+                displayModule == null ? null : displayModule.getDisplaysCommand(),
+                displayModule == null ? null : displayModule.getHologramImportService());
         commandManager.setMainCommand(mainCommand);
         commandManager.registerCommand(mainCommand);
 

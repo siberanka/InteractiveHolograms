@@ -30,8 +30,7 @@ import com.siberanka.interactiveholograms.display.attribute.AttributeCommandServ
 import com.siberanka.interactiveholograms.display.attribute.DisplayAttributeService;
 import com.siberanka.interactiveholograms.display.attribute.defaults.AttributeDefaultService;
 import com.siberanka.interactiveholograms.platform.api.capability.PlatformMaterialService;
-import com.siberanka.interactiveholograms.display.config.FancyHologramsImporter;
-import com.siberanka.interactiveholograms.display.config.DecentHologramsImporter;
+import com.siberanka.interactiveholograms.display.config.HologramImportService;
 import com.siberanka.interactiveholograms.display.integration.ModelCatalog;
 
 @CommandInfo(
@@ -48,8 +47,7 @@ public class DisplaysCommand extends DecentCommand {
                            AttributeDefaultService attributeDefaultService,
                            DisplayAttributeService displayAttributeService,
                            PlatformMaterialService materialService,
-                           FancyHologramsImporter fancyImporter,
-                           DecentHologramsImporter decentImporter,
+                           HologramImportService importService,
                            ModelCatalog modelCatalog) {
         super("holograms");
 
@@ -74,8 +72,8 @@ public class DisplaysCommand extends DecentCommand {
         addSubCommand(new NearbyDisplaysCommand(displayService));
         addSubCommand(new BlockDisplaySetBlockCommand(displayService, materialService));
         addSubCommand(new ItemDisplaySetItemCommand(displayService, materialService));
-        addSubCommand(new FancyImportDisplayCommand(fancyImporter, displayService));
-        addSubCommand(new DecentImportDisplayCommand(decentImporter, displayService));
+        addSubCommand(new FancyImportDisplayCommand(importService, displayService));
+        addSubCommand(new DecentImportDisplayCommand(importService, displayService));
         addSubCommand(new ModelDisplayCommand(displayService, modelCatalog));
         addSubCommand(new ActionDisplayCommand(displayService));
         addSubCommand(new SettingDisplayCommand(displayService));

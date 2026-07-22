@@ -27,7 +27,7 @@ public class PlayerListener implements Listener {
         Player player = e.getPlayer();
         S.async(() -> decentHolograms.getHologramManager().updateVisibility(player));
         if (decentHolograms.isUpdateAvailable() && player.hasPermission(Permissions.ADMIN)) {
-            Lang.sendUpdateMessage(player);
+            Lang.sendUpdateMessage(player, decentHolograms.getLatestReleaseUrl());
         }
     }
 

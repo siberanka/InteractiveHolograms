@@ -5,6 +5,8 @@ import com.siberanka.interactiveholograms.api.holograms.Hologram;
 import com.siberanka.interactiveholograms.api.holograms.enums.EnumFlag;
 import com.siberanka.interactiveholograms.api.utils.Common;
 import com.siberanka.interactiveholograms.api.utils.Log;
+import com.siberanka.interactiveholograms.api.utils.UpdateChecker;
+import com.siberanka.interactiveholograms.api.utils.message.Message;
 import com.siberanka.interactiveholograms.api.utils.config.ConfigValue;
 import com.siberanka.interactiveholograms.api.utils.config.FileConfig;
 import com.siberanka.interactiveholograms.api.utils.config.Phrase;
@@ -199,20 +201,15 @@ public class Lang {
     }
 
     public static void sendVersionMessage(@NonNull CommandSender sender) {
-        Common.tell(sender,
-                "\n&fThis server is running &3InteractiveHolograms v%s&f by &bd0by & siberanka&f: \n&f- &7%s\n&f- &7%s",
-                InteractiveHologramsAPI.get().getPlugin().getDescription().getVersion(),
-                "https://github.com/siberanka/InteractiveHolograms/releases/latest",
-                "https://github.com/siberanka/InteractiveHolograms/blob/main/WIKI.md"
-        );
+        Common.tell(sender, "\n&fThis server is running &3InteractiveHolograms v%s&f by &bd0by & siberanka&f:",
+                InteractiveHologramsAPI.get().getPlugin().getDescription().getVersion());
+        Message.sendOpenUrl(sender, "&f- &bDownload / Releases", UpdateChecker.LATEST_RELEASE_URL);
+        Message.sendOpenUrl(sender, "&f- &bDocumentation", "https://github.com/siberanka/InteractiveHolograms/blob/main/WIKI.md");
     }
 
-    public static void sendUpdateMessage(@NonNull CommandSender sender) {
-        Common.tell(sender,
-                "\n" + NEW_VERSION_AVAILABLE.getValue() + " \n&f- &7%s\n&f- &7%s",
-                "https://github.com/siberanka/InteractiveHolograms/releases/latest",
-                "https://github.com/siberanka/InteractiveHolograms/blob/main/WIKI.md"
-        );
+    public static void sendUpdateMessage(@NonNull CommandSender sender, String releaseUrl) {
+        Common.tell(sender, "\n" + NEW_VERSION_AVAILABLE.getValue());
+        Message.sendOpenUrl(sender, "&f- &bDownload update", releaseUrl == null ? UpdateChecker.LATEST_RELEASE_URL : releaseUrl);
     }
 
     @NonNull

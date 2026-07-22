@@ -37,6 +37,11 @@ defaults:
 # Valid range: 1..300 ticks.
 click-cooldown: 1
 
+# Check this repository's GitHub Releases page asynchronously on startup.
+# Operators with ih.admin receive a clickable link when a newer release exists.
+# Options: true, false.
+check-for-updates: true
+
 # Resolve PlaceholderAPI placeholders inside every animation frame.
 # Options: true, false. Keep false unless required; true increases CPU work.
 allow-placeholders-inside-animations: false

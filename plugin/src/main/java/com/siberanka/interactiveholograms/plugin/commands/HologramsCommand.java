@@ -14,6 +14,8 @@ import com.siberanka.interactiveholograms.api.utils.Common;
 import com.siberanka.interactiveholograms.api.utils.message.Message;
 import com.siberanka.interactiveholograms.api.utils.scheduler.S;
 import com.siberanka.interactiveholograms.display.command.DisplaysCommand;
+import com.siberanka.interactiveholograms.display.config.HologramImportService;
+import com.siberanka.interactiveholograms.display.config.HologramImportSource;
 import com.siberanka.interactiveholograms.plugin.Validator;
 import com.siberanka.interactiveholograms.plugin.convertors.ConvertorResult;
 import com.siberanka.interactiveholograms.plugin.convertors.ConvertorType;
@@ -38,7 +40,7 @@ import java.util.stream.Collectors;
 )
 public class HologramsCommand extends DecentCommand {
 
-	public HologramsCommand(DisplaysCommand displaysCommand) {
+	public HologramsCommand(DisplaysCommand displaysCommand, HologramImportService importService) {
 		super("interactiveholograms");
 
         addSubCommand(new ProfilerCommand(DecentProfiler.getInstance()));
@@ -67,7 +69,11 @@ public class HologramsCommand extends DecentCommand {
             addSubCommand(new HologramSubCommand.HologramMovehereSub());
         }
 		addSubCommand(new FeatureSubCommand());
-		addSubCommand(new ConvertSubCommand());
+        if (importService != null) {
+            addSubCommand(new ImportSubCommand(importService));
+        } else {
+            addSubCommand(new ConvertSubCommand());
+        }
         addSubCommand(new VersionSubCommand());
 	}
 
@@ -120,6 +126,71 @@ public class HologramsCommand extends DecentCommand {
         @Override
         public TabCompleteHandler getTabCompleteHandler() {
             return null;
+        }
+    }
+
+    @CommandInfo(
+            permissions = Permissions.COMMAND_IMPORT,
+            usage = "/ih import <source> [relative-path] [--overwrite]",
+            description = "Import a supported hologram plugin into the modern IH format.",
+            aliases = {"convert", "migrate"},
+            minArgs = 1
+    )
+    public static final class ImportSubCommand extends DecentCommand {
+        private final HologramImportService importService;
+
+        public ImportSubCommand(HologramImportService importService) {
+            super("import"); this.importService = importService;
+        }
+
+        @Override
+        public CommandHandler getCommandHandler() {
+            return (sender, args) -> {
+                HologramImportSource source = HologramImportSource.parse(args[0]);
+                if (source == null) {
+                    Common.tell(sender, "%s&cUnknown source '%s'. Supported: %s", Common.PREFIX, args[0],
+                            String.join(", ", HologramImportSource.displayNames()));
+                    return true;
+                }
+                boolean overwrite = false;
+                String path = null;
+                for (int i = 1; i < args.length; i++) {
+                    if ("--overwrite".equalsIgnoreCase(args[i])) overwrite = true;
+                    else if (path == null) path = args[i];
+                    else {
+                        Common.tell(sender, "%s&cOnly one relative path may be supplied.", Common.PREFIX);
+                        return true;
+                    }
+                }
+                final boolean replace = overwrite;
+                final String sourcePath = path;
+                Common.tell(sender, "%sImporting %s holograms...", Common.PREFIX, source.getDisplayName());
+                S.async(() -> {
+                    try {
+                        HologramImportService.ImportResult result = importService.importFrom(source, sourcePath, replace);
+                        S.sync(() -> {
+                            if (PLUGIN.getDisplayModule() != null) PLUGIN.getDisplayModule().reload();
+                            Common.tell(sender, "%s&aImport complete: %d imported, %d skipped, %d warning(s).",
+                                    Common.PREFIX, result.getImported(), result.getSkipped(), result.getWarnings());
+                        });
+                    } catch (Exception exception) {
+                        S.sync(() -> Common.tell(sender, "%s&cImport failed: %s", Common.PREFIX, exception.getMessage()));
+                    }
+                });
+                return true;
+            };
+        }
+
+        @Override
+        public TabCompleteHandler getTabCompleteHandler() {
+            return (sender, args) -> {
+                if (args.length == 1) return TabCompleteHandler.getPartialMatches(args[0], HologramImportSource.displayNames());
+                HologramImportSource source = HologramImportSource.parse(args[0]);
+                if (args.length == 2 && source != null) {
+                    return TabCompleteHandler.getPartialMatches(args[1], source.getDefaultPath(), "--overwrite");
+                }
+                return TabCompleteHandler.getPartialMatches(args[args.length - 1], "--overwrite");
+            };
         }
     }
 
@@ -228,7 +299,7 @@ public class HologramsCommand extends DecentCommand {
         public CommandHandler getCommandHandler() {
             return (sender, args) -> {
                 sender.sendMessage("");
-                Common.tell(sender, " &3&lDECENT HOLOGRAMS HELP");
+                Common.tell(sender, " &3&lINTERACTIVE HOLOGRAMS HELP");
                 Common.tell(sender, " All general commands.");
                 sender.sendMessage("");
                 CommandBase command = PLUGIN.getCommandManager().getMainCommand();
@@ -261,7 +332,7 @@ public class HologramsCommand extends DecentCommand {
         public CommandHandler getCommandHandler() {
             return (sender, args) -> {
                 final ConvertorType convertorType = ConvertorType.fromString(args[0]);
-                final String path = args.length >= 2 ? args[0] : null;
+                final String path = args.length >= 2 ? args[1] : null;
                 if (convertorType == null) {
                     Common.tell(sender, "%s&cCannot convert Holograms! Unknown plugin '%s' provided", Common.PREFIX, args[0]);
                     return true;

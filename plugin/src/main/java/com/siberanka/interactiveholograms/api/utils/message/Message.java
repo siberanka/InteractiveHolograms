@@ -9,6 +9,7 @@ import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.apache.commons.lang.Validate;
 import org.bukkit.entity.Player;
+import org.bukkit.command.CommandSender;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +18,18 @@ import java.util.function.Function;
 
 @UtilityClass
 public final class Message {
+
+    public static void sendOpenUrl(CommandSender sender, String text, String url) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(Common.colorize(text + " &7" + url));
+            return;
+        }
+        ((Player) sender).spigot().sendMessage(new ComponentBuilder(Common.colorize(text))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        TextComponent.fromLegacyText(Common.colorize("&7Open GitHub Releases"))))
+                .event(new ClickEvent(ClickEvent.Action.OPEN_URL, url))
+                .create());
+    }
 
 	public static void sendHoverSuggest(Player player, String text, String hoverText, String suggest) {
 		player.spigot().sendMessage(new ComponentBuilder(text)

@@ -42,6 +42,7 @@ permissions:
       ih.command.reload: true
       ih.command.list: true
       ih.command.help: true
+      ih.command.import: true
       ih.command.convert: true
       ih.command.features: true
       ih.command.holograms: true
@@ -454,6 +455,9 @@ permissions:
     default: op
   ih.command.displays.text.swaplines:
     description: "Allows player to use the command '/ih displays swap-lines <display> <index1> <index2>'"
+    default: op
+  ih.command.import:
+    description: "Allows importing every supported hologram plugin into the InteractiveHolograms format"
     default: op
   ih.command.displays.setting:
     description: "Allows advanced visibility, permission and persistence settings"

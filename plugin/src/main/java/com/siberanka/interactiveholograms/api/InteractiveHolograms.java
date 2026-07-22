@@ -9,6 +9,8 @@ import com.siberanka.interactiveholograms.api.listeners.PlayerListener;
 import com.siberanka.interactiveholograms.api.listeners.WorldListener;
 import com.siberanka.interactiveholograms.api.utils.BungeeUtils;
 import com.siberanka.interactiveholograms.api.utils.Log;
+import com.siberanka.interactiveholograms.api.utils.Common;
+import com.siberanka.interactiveholograms.api.utils.UpdateChecker;
 import com.siberanka.interactiveholograms.api.utils.event.EventFactory;
 import com.siberanka.interactiveholograms.api.utils.reflect.Version;
 import com.siberanka.interactiveholograms.api.utils.tick.Ticker;
@@ -55,7 +57,8 @@ public final class InteractiveHolograms {
     private AnimationManager animationManager;
     private Ticker ticker;
     private DisplayModule displayModule;
-    private boolean updateAvailable;
+    private volatile boolean updateAvailable;
+    private volatile String latestReleaseUrl = UpdateChecker.LATEST_RELEASE_URL;
 
     InteractiveHolograms(@NonNull JavaPlugin plugin) {
         this.plugin = plugin;
@@ -94,6 +97,19 @@ public final class InteractiveHolograms {
         pluginManager.registerEvents(new BukkitPlayerListener(playerService), this.plugin);
 
         BungeeUtils.init();
+        checkForUpdates();
+    }
+
+    private void checkForUpdates() {
+        if (!Settings.CHECK_FOR_UPDATES) return;
+        String currentVersion = plugin.getDescription().getVersion();
+        new UpdateChecker(plugin).getLatestRelease(release -> {
+            latestReleaseUrl = release.getUrl();
+            updateAvailable = Common.isVersionHigher(currentVersion, release.getVersion());
+            if (updateAvailable) {
+                Log.info("InteractiveHolograms %s is available: %s", release.getVersion(), release.getUrl());
+            }
+        });
     }
 
     void disable() {

@@ -64,38 +64,60 @@ public final class DecentHologramsImporter {
             String name = sanitizeName(filename.substring(0, filename.length() - 4));
             if (name == null) { skipped++; continue; }
             YamlConfiguration input = YamlConfiguration.loadConfiguration(file.toFile());
-            YamlConfiguration output = convert(input);
-            if (output == null) { skipped++; warnings++; continue; }
-            Path target = hologramsDirectory.resolve(name + ".yml").normalize();
-            if (!target.startsWith(hologramsDirectory)) { skipped++; continue; }
-            if (Files.exists(target) && !overwrite) { skipped++; continue; }
-            if (Files.exists(target)) backup(target, name);
-            saveAtomically(output, target);
-            imported++;
-            if (input.getList("pages", Collections.emptyList()).size() > 1) warnings++;
+            List<Converted> outputs = convert(input);
+            if (outputs.isEmpty()) { skipped++; warnings++; continue; }
+            if (imported + outputs.size() > MAX_FILES) throw new IOException("Import would create more than " + MAX_FILES + " holograms.");
+            for (Converted converted : outputs) {
+                String outputName = sanitizeName(name + converted.suffix);
+                if (outputName == null) { skipped++; warnings++; continue; }
+                Path target = hologramsDirectory.resolve(outputName + ".yml").normalize();
+                if (!target.startsWith(hologramsDirectory)) { skipped++; continue; }
+                if (Files.exists(target) && !overwrite) { skipped++; continue; }
+                if (Files.exists(target)) backup(target, outputName);
+                saveAtomically(converted.yaml, target);
+                imported++;
+            }
         }
         return new ImportResult(imported, skipped, warnings, source);
     }
 
-    private YamlConfiguration convert(YamlConfiguration input) {
+    private List<Converted> convert(YamlConfiguration input) {
         String[] location = parseLocation(input.getString("location"));
-        if (location == null) return null;
+        if (location == null) return Collections.emptyList();
         List<?> pages = input.getList("pages", Collections.emptyList());
-        if (pages.isEmpty() || !(pages.get(0) instanceof Map)) return null;
-        Map<?, ?> page = (Map<?, ?>) pages.get(0);
-        Object rawLines = page.get("lines");
-        if (!(rawLines instanceof List)) return null;
-        List<String> text = new ArrayList<>();
-        for (Object rawLine : (List<?>) rawLines) {
-            Object content = rawLine instanceof Map ? ((Map<?, ?>) rawLine).get("content") : rawLine;
-            if (content != null) text.add(String.valueOf(content));
+        if (pages.isEmpty()) return Collections.emptyList();
+        List<Converted> outputs = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
+            if (!(pages.get(pageIndex) instanceof Map)) continue;
+            Map<?, ?> page = (Map<?, ?>) pages.get(pageIndex);
+            Object rawLines = page.get("lines");
+            if (!(rawLines instanceof List)) continue;
+            List<String> text = new ArrayList<>();
+            for (Object rawLine : (List<?>) rawLines) {
+                Object content = rawLine instanceof Map ? ((Map<?, ?>) rawLine).get("content") : rawLine;
+                if (content != null) text.add(String.valueOf(content));
+            }
+            if (text.isEmpty()) continue;
+            String pageSuffix = pageIndex == 0 ? "" : "_page" + (pageIndex + 1);
+            Object actions = page.get("actions");
+            boolean split = text.size() > 1 && text.stream().anyMatch(this::isVisual);
+            if (split) {
+                for (int lineIndex = 0; lineIndex < text.size(); lineIndex++) {
+                    String suffix = pageSuffix + (lineIndex == 0 ? "" : "_line" + (lineIndex + 1));
+                    outputs.add(new Converted(suffix, createOutput(input, location,
+                            Collections.singletonList(text.get(lineIndex)), actions, -lineIndex * 0.3d)));
+                }
+            } else outputs.add(new Converted(pageSuffix, createOutput(input, location, text, actions, 0.0d)));
         }
-        if (text.isEmpty()) return null;
+        return outputs;
+    }
 
+    private YamlConfiguration createOutput(YamlConfiguration input, String[] location, List<String> text,
+                                            Object actions, double yOffset) {
         YamlConfiguration output = new YamlConfiguration();
         output.set("schema-version", HologramConfigMigrator.SCHEMA_VERSION);
         output.set("location.world", location[0]);
-        output.set("location.x", number(location[1])); output.set("location.y", number(location[2])); output.set("location.z", number(location[3]));
+        output.set("location.x", number(location[1])); output.set("location.y", number(location[2]) + yOffset); output.set("location.z", number(location[3]));
         output.set("location.yaw", location.length > 4 ? number(location[4]) : 0.0d);
         output.set("location.pitch", location.length > 5 ? number(location[5]) : 0.0d);
         output.set("enabled", input.getBoolean("enabled", true));
@@ -104,9 +126,14 @@ public final class DecentHologramsImporter {
         output.set("permission", input.getString("permission", ""));
         output.set("billboard", facing(input.getString("facing", "CENTER")));
         configureContent(output, text);
-        Object actions = page.get("actions");
         output.set("actions", actions instanceof Map ? actions : Collections.emptyMap());
         return output;
+    }
+
+    private boolean isVisual(String line) {
+        String value = line == null ? "" : line.trim().toUpperCase(Locale.ROOT);
+        return value.startsWith("#ICON:") || value.startsWith("#HEAD:")
+                || value.startsWith("#SMALLHEAD:") || value.startsWith("#ENTITY:");
     }
 
     private void configureContent(YamlConfiguration output, List<String> lines) {
@@ -178,6 +205,11 @@ public final class DecentHologramsImporter {
     }
 
     private String sanitizeName(String name) { return name.matches("[A-Za-z0-9_-]{1,64}") ? name : null; }
+
+    private static final class Converted {
+        private final String suffix; private final YamlConfiguration yaml;
+        private Converted(String suffix, YamlConfiguration yaml) { this.suffix = suffix; this.yaml = yaml; }
+    }
 
     public static final class ImportResult {
         private final int imported, skipped, warnings; private final Path source;

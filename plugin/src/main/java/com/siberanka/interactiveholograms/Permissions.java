@@ -38,6 +38,7 @@ public final class Permissions {
     public static final String COMMAND_RELOAD = COMMANDS + ".reload";
     public static final String COMMAND_INTERACTIVE_HOLOGRAMS = COMMANDS + ".interactiveholograms";
     public static final String COMMAND_VERSION = COMMANDS + ".version";
+    public static final String COMMAND_IMPORT = COMMANDS + ".import";
 
     // -- Hologram Commands
 
