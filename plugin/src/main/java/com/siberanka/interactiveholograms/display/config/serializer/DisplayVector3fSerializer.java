@@ -43,8 +43,8 @@ public final class DisplayVector3fSerializer implements TypeSerializer<DecentVec
             return;
         }
 
-        node.node("x").set(obj.getX());
-        node.node("y").set(obj.getY());
-        node.node("z").set(obj.getZ());
+        node.node("x").set((double) obj.getX());
+        node.node("y").set((double) obj.getY());
+        node.node("z").set((double) obj.getZ());
     }
 }

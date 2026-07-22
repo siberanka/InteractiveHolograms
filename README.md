@@ -64,7 +64,7 @@ dependencies {
 }
 ```
 
-Replace `VERSION` with a published tag such as `v3.2.0`.
+Replace `VERSION` with a published tag such as `v3.2.1`.
 
 ## Contributing and security
 

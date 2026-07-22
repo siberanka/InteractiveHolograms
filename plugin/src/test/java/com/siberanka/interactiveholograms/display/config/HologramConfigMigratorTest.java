@@ -1,9 +1,12 @@
 package com.siberanka.interactiveholograms.display.config;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.spongepowered.configurate.BasicConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,5 +52,27 @@ class HologramConfigMigratorTest {
         assertEquals(2.0f, internal.node("attributes", "scale", "value", "x").getFloat());
         assertTrue(internal.node("attributes", "text-shadow", "value").getBoolean());
         assertEquals("hello", internal.node("pages", 0, "lines", 0).getString());
+    }
+
+    @Test
+    void convertsYamlBackedDecimalsWithoutWritingUnsupportedFloatObjects(@TempDir Path directory) throws Exception {
+        YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+                .path(directory.resolve("hologram.yml"))
+                .build();
+        ConfigurationNode root = loader.createNode();
+        root.node("type").raw("TEXT");
+        root.node("text").raw(Arrays.asList("hello"));
+        root.node("scale_x").raw(2.25d);
+        root.node("shadow_radius").raw(0.75d);
+
+        HologramConfigMigrator migrator = new HologramConfigMigrator();
+        migrator.canonicalize(root);
+        ConfigurationNode internal = migrator.toInternal(root);
+        loader.save(internal);
+
+        assertTrue(internal.node("attributes", "scale", "value", "x").raw() instanceof Double);
+        assertTrue(internal.node("attributes", "shadow-radius", "value").raw() instanceof Double);
+        assertEquals(2.25f, internal.node("attributes", "scale", "value", "x").getFloat());
+        assertEquals(0.75f, internal.node("attributes", "shadow-radius", "value").getFloat());
     }
 }

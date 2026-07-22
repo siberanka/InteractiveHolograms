@@ -43,7 +43,7 @@ public final class FloatValueType implements AttributeValueType<FloatValue, Floa
 
     @Override
     public void serialize(FloatValue value, ConfigurationNode node) throws SerializationException {
-        node.set(value.getValue());
+        node.set((double) value.getValue());
     }
 
     @Override

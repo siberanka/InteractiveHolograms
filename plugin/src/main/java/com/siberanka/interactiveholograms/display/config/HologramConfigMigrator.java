@@ -116,8 +116,8 @@ public final class HologramConfigMigrator {
         attribute(root, "billboard", "billboard_constraints", root.node("billboard").getString("CENTER").toUpperCase(Locale.ROOT));
         vectorAttribute(root, "scale", "scale_x", "scale_y", "scale_z");
         vectorAttribute(root, "translation", "translation_x", "translation_y", "translation_z");
-        attribute(root, "shadow-radius", "float", (float) root.node("shadow_radius").getDouble(0.0d));
-        attribute(root, "shadow-strength", "float", (float) root.node("shadow_strength").getDouble(1.0d));
+        attribute(root, "shadow-radius", "float", root.node("shadow_radius").getDouble(0.0d));
+        attribute(root, "shadow-strength", "float", root.node("shadow_strength").getDouble(1.0d));
 
         int blockLight = root.node("block_brightness").getInt(-1);
         int skyLight = root.node("sky_brightness").getInt(-1);
@@ -228,9 +228,11 @@ public final class HologramConfigMigrator {
     private void vectorAttribute(ConfigurationNode root, String name, String x, String y, String z) {
         ConfigurationNode attribute = root.node("attributes", name);
         attribute.node("value-type").raw("vector3f");
-        attribute.node("value", "x").raw((float) root.node(x).getDouble());
-        attribute.node("value", "y").raw((float) root.node(y).getDouble());
-        attribute.node("value", "z").raw((float) root.node(z).getDouble());
+        // Configurate YAML accepts Double as its decimal scalar representation,
+        // but rejects Float objects before type serializers can coerce them.
+        attribute.node("value", "x").raw(root.node(x).getDouble());
+        attribute.node("value", "y").raw(root.node(y).getDouble());
+        attribute.node("value", "z").raw(root.node(z).getDouble());
     }
 
     private void attribute(ConfigurationNode root, String name, String valueType, Object value) {

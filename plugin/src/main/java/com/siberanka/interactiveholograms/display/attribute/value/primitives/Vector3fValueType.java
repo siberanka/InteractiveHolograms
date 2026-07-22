@@ -44,9 +44,9 @@ public final class Vector3fValueType implements AttributeValueType<Vector3fValue
 
     @Override
     public void serialize(Vector3fValue value, ConfigurationNode node) throws SerializationException {
-        node.node("x").set(value.getX());
-        node.node("y").set(value.getY());
-        node.node("z").set(value.getZ());
+        node.node("x").set((double) value.getX());
+        node.node("y").set((double) value.getY());
+        node.node("z").set((double) value.getZ());
     }
 
     @Override

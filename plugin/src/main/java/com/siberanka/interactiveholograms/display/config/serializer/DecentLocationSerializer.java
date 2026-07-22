@@ -53,7 +53,7 @@ public final class DecentLocationSerializer implements TypeSerializer<DecentLoca
         node.node("x").set(obj.getX());
         node.node("y").set(obj.getY());
         node.node("z").set(obj.getZ());
-        node.node("yaw").set(obj.getYaw());
-        node.node("pitch").set(obj.getPitch());
+        node.node("yaw").set((double) obj.getYaw());
+        node.node("pitch").set((double) obj.getPitch());
     }
 }
