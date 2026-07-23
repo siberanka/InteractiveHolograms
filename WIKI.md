@@ -89,7 +89,7 @@ General keys:
 
 | Key | Values | Meaning |
 |---|---|---|
-| `schema-version` | `3` | Managed file schema |
+| `schema-version` | `4` | Managed file schema |
 | `type` | `TEXT`, `ITEM`, `BLOCK` | Display packet type |
 | `location` | world, x, y, z, yaw, pitch | Anchor and fixed rotation |
 | `enabled` | `true`, `false` | Whether packets are sent |
@@ -97,6 +97,7 @@ General keys:
 | `visibility` | `ALL`, `MANUAL`, `PERMISSION_REQUIRED` | Viewer selection policy |
 | `permission` | permission node or omitted | Override for permission visibility |
 | `persistent` | `true`, `false` | Whether future command changes remain on disk |
+| `hitbox_width/height` | `0.1..16.0` | Minimum packet hitbox size; text expands automatically |
 | `billboard` | `CENTER`, `FIXED`, `HORIZONTAL`, `VERTICAL` | Client facing behavior |
 | `scale_x/y/z` | decimal | Per-axis display scale |
 | `translation_x/y/z` | decimal | Client-side positional offset |
@@ -107,7 +108,7 @@ General keys:
 | `glowing_color` | `disabled`, named color/hex where supported | Glow color |
 | `update_text_interval` | `-1` or ticks | `-1` resolves once; positive values refresh |
 
-Text-only keys are `text`, `text_shadow`, `see_through`, `text_alignment` (`LEFT`, `CENTER`, `RIGHT`), `background`, `line_width` and `text_opacity`. Item-only keys are `item`, `item_provider` (`AUTO`, `VANILLA`, `CRAFTENGINE`) and `item_display` (`NONE`, `THIRD_PERSON_LEFT_HAND`, `THIRD_PERSON_RIGHT_HAND`, `FIRST_PERSON_LEFT_HAND`, `FIRST_PERSON_RIGHT_HAND`, `HEAD`, `GUI`, `GROUND`, `FIXED`). Block holograms use `block`.
+Text-only content is stored under `pages`. Every page has an ordered `lines` list; every line contains `content` and a `height` spacing value from `0.01` to `16.0` blocks. A page may have its own `actions`. Other text keys are `text_shadow`, `see_through`, `text_alignment` (`LEFT`, `CENTER`, `RIGHT`), `background`, `line_width` and `text_opacity`. Legacy schema-3 `text` lists and string-only page lines are backed up and upgraded automatically. Item-only keys are `item`, `item_provider` (`AUTO`, `VANILLA`, `CRAFTENGINE`) and `item_display` (`NONE`, `THIRD_PERSON_LEFT_HAND`, `THIRD_PERSON_RIGHT_HAND`, `FIRST_PERSON_LEFT_HAND`, `FIRST_PERSON_RIGHT_HAND`, `HEAD`, `GUI`, `GROUND`, `FIXED`). Block holograms use `block`.
 
 `model_provider` accepts `NONE`, `BETTERMODEL`, `MYTHICMOBS` or `MODELENGINE`. `BETTERMODEL` uses a location-only DummyTracker; `MODELENGINE` uses a non-Bukkit Dummy. `MYTHICMOBS` validates a registered Mythic mob ID, then resolves the same visual ID through BetterModel or ModelEngine without invoking a mob-spawn API. The `/ih holograms model` command lists installed providers, model/mob IDs and discoverable animations in tab completion. For a model-only base display, set its display scale to zero so only the external packet model is visible.
 
@@ -129,11 +130,17 @@ Text holograms and `MESSAGE` click actions accept mixed formatting. PlaceholderA
 Supported PlaceholderAPI forms are standard `%identifier_parameter%`, bracket `{identifier_parameter}`, and relational `%rel_identifier_parameter%`. Relational placeholders use the current viewer as both relational contexts because a packet hologram has one viewer context and no server-side target entity. Placeholder output is resolved for up to three passes, allowing bounded nested expansions without infinite recursion. Results and formatter input are length-bounded, malformed formatting remains visible instead of interrupting rendering, and recurring output is kept in a bounded thread-safe LRU cache.
 
 ```yaml
-text:
-  - '<gradient:#00ffff:#5555ff><bold>Skyblock</bold></gradient>'
-  - '<gray>Welcome, <aqua>%player_name%</aqua>!'
-  - '&eBalance: &#55FF55%vault_eco_balance_formatted%'
-  - '{#AAAAAA}Server: {server_name}'
+pages:
+- lines:
+  - content: '<gradient:#00ffff:#5555ff><bold>Skyblock</bold></gradient>'
+    height: 0.5
+  - content: '<gray>Welcome, <aqua>%player_name%</aqua>!'
+    height: 0.3
+  - content: '&eBalance: &#55FF55%vault_eco_balance_formatted%'
+    height: 0.3
+  - content: '{#AAAAAA}Server: {server_name}'
+    height: 0.3
+  actions: {}
 ```
 
 Always quote YAML text containing `#`, `&`, `<` or `>`. Interactive MiniMessage tags such as `<click>` and `<hover>` are deliberately not executed inside hologram text; use the packet hitbox `actions` section for authenticated, distance-checked clicks. MiniMessage syntax follows the [Kyori format reference](https://docs.advntr.dev/minimessage/format.html), and expansion syntax follows the [PlaceholderAPI developer reference](https://wiki.placeholderapi.com/developers/using-placeholderapi/).
@@ -143,7 +150,7 @@ Always quote YAML text containing `#`, `&`, `<` or `>`. Interactive MiniMessage 
 The following file is valid as `plugins/InteractiveHolograms/holograms/complete-example.yml`. It deliberately includes every public entry; only the content entries matching `type` are rendered.
 
 ```yaml
-schema-version: 3
+schema-version: 4
 type: TEXT # TEXT, ITEM, BLOCK
 location:
   world: world
@@ -157,6 +164,8 @@ visibility_distance: -1 # -1 or a non-negative block distance
 visibility: ALL # ALL, MANUAL, PERMISSION_REQUIRED
 permission: ''
 persistent: true
+hitbox_width: 1.0 # 0.1..16.0; minimum, text expands automatically
+hitbox_height: 1.0 # 0.1..16.0; minimum, text expands automatically
 billboard: CENTER # CENTER, FIXED, HORIZONTAL, VERTICAL
 scale_x: 1.0
 scale_y: 1.0
@@ -171,10 +180,22 @@ sky_brightness: -1 # -1 or 0..15
 glowing_color: disabled # disabled, named color, or supported hex
 update_text_interval: -1 # -1 or positive ticks
 
-# TEXT content
-text:
-  - '<gold><bold>InteractiveHolograms</bold>'
-  - '<gray>Packet-only and clickable'
+# TEXT content. Each viewer has an independent active page.
+pages:
+- lines:
+  - content: '<gold><bold>InteractiveHolograms</bold>'
+    height: 0.5 # 0.01..16.0 blocks
+  - content: '<gray>Packet-only and clickable'
+    height: 0.3
+  actions:
+    LEFT:
+    - NEXT_PAGE
+- lines:
+  - content: '<aqua>Second page'
+    height: 0.4
+  actions:
+    LEFT:
+    - PAGE:1
 text_shadow: false
 see_through: false
 text_alignment: CENTER # LEFT, CENTER, RIGHT
@@ -197,8 +218,9 @@ model_provider: NONE # NONE, BETTERMODEL, MYTHICMOBS, MODELENGINE
 model: '' # provider model/mob ID
 animation: '' # provider animation ID or empty
 
-# LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT. A non-empty action map creates the
-# per-viewer packet hitbox automatically for text, item, block, model and mob.
+# LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT. Global actions are combined with the
+# active page's actions. Any action creates the complete packet hitbox
+# automatically for text, item, block, model and mob.
 actions:
   RIGHT:
     - 'MESSAGE:<green>You clicked the hologram!'
@@ -210,7 +232,7 @@ The generated `hologram-example.yml` contains the same keys with expanded inline
 
 ## Click actions and hitboxes
 
-Adding the first action creates the packet hitbox; removing the last action removes it. No Bukkit entity is inserted into a world or chunk.
+Adding the first global or page action creates the packet hitbox; removing the last action removes it. No Bukkit entity is inserted into a world or chunk. Text hitboxes are calculated from the longest formatted line and the sum of line heights across all pages, then represented by a bounded packet-only grid. The grid faces each viewer and covers the complete text area without creating server-side entities.
 
 ```text
 /ih holograms action <name> list <click>
@@ -227,6 +249,9 @@ Common action types:
 - `COMMAND:/<command>` runs a command as the player.
 - `CONSOLE:<command>` runs a console command.
 - `SOUND:<sound>[:volume:pitch]` plays a sound.
+- `NEXT_PAGE` selects the next page for that viewer.
+- `PREV_PAGE` selects the previous page for that viewer.
+- `PAGE:<number>` selects a one-based page for that viewer.
 
 Use `{player}` for player-name replacement. Packet input is revalidated against world and an eight-block interaction limit. `click-cooldown` in `config.yml` controls repeated activation.
 
@@ -259,11 +284,11 @@ Examples:
 /ih import CMI
 ```
 
-All formats are written to `plugins/InteractiveHolograms/holograms/` using the current modern schema. Multi-page sources become `<name>_page2`, `<name>_page3`, and so on. Mixed text/item/entity line stacks are split into positioned `<name>_line2` files so visual lines are not serialized as literal text. `ICON`, `ITEM`, `HEAD`, `SMALLHEAD` and `ENTITY` markers are converted to packet display equivalents; entity markers become zero-scale anchors resolved through an installed packet model backend.
+All formats are written to `plugins/InteractiveHolograms/holograms/` using the current modern schema. A DecentHolograms file with multiple pages remains one IH YAML file with the same page order, line order, line heights and page actions. Pure single-line `ICON`, `HEAD`, `SMALLHEAD` and `ENTITY` holograms are converted to packet display equivalents; an entity marker becomes a zero-scale anchor resolved through an installed packet model backend. Mixed visual markers inside a multi-line or multi-page Decent hologram remain ordered page content because one IH YAML has one packet display type.
 
 Imports execute off the server thread and only the final display reload returns to the main thread. Only one import may run at a time. Input paths are confined to the server directory, source size/output counts are bounded, writes are atomic and malformed entries fail closed.
 
-DecentHolograms stores one YAML file per hologram. The importer reads a directory or a single file, converts every page into the modern packet schema, recognizes text plus `#ICON`, `#HEAD`, `#SMALLHEAD` and `#ENTITY` visuals, and carries location, visibility range, update interval, permission and page click actions. Imported `#ENTITY` lines become zero-scale ITEM anchors with a `MYTHICMOBS` model ID; they remain entity-free and need a matching BetterModel or ModelEngine visual:
+DecentHolograms stores one YAML file per hologram. The importer reads a directory or a single file and converts all of its pages into one modern IH file. It preserves page order, line order, `content`, `height`, and page click actions such as `NEXT_PAGE` and `PAGE:1`, along with location, visibility range, update interval and permission. Pure single-line `#ICON`, `#HEAD`, `#SMALLHEAD` and `#ENTITY` visuals are converted to packet display equivalents. Imported `#ENTITY` lines become zero-scale ITEM anchors with a `MYTHICMOBS` model ID; they remain entity-free and need a matching BetterModel or ModelEngine visual:
 
 ```text
 /ih holograms import-decent

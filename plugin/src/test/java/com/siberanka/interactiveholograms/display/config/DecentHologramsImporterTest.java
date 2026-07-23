@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -30,8 +32,9 @@ class DecentHologramsImporterTest {
         YamlConfiguration output = YamlConfiguration.loadConfiguration(data.resolve("holograms/welcome.yml").toFile());
         assertEquals("TEXT", output.getString("type"));
         assertEquals("world", output.getString("location.world"));
-        assertEquals("<gold>Hello", output.getStringList("text").get(0));
-        assertEquals("MESSAGE:clicked", output.getStringList("actions.RIGHT").get(0));
+        assertEquals("<gold>Hello", line(output, 0, 0).get("content"));
+        assertEquals(0.3d, ((Number) line(output, 0, 0).get("height")).doubleValue());
+        assertEquals("MESSAGE:clicked", actions(output, 0, "RIGHT").get(0));
     }
 
     @Test
@@ -71,9 +74,66 @@ class DecentHologramsImporterTest {
                 + "  - lines:\n      - content: second\n").getBytes(StandardCharsets.UTF_8));
         Path data = root.resolve("data");
         DecentHologramsImporter.ImportResult result = new DecentHologramsImporter(root, data).importYaml("legacy", false);
-        assertEquals(3, result.getImported());
+        assertEquals(1, result.getImported());
         assertTrue(Files.isRegularFile(data.resolve("holograms/mixed.yml")));
-        assertTrue(Files.isRegularFile(data.resolve("holograms/mixed_line2.yml")));
-        assertTrue(Files.isRegularFile(data.resolve("holograms/mixed_page2.yml")));
+        YamlConfiguration output = YamlConfiguration.loadConfiguration(
+                data.resolve("holograms/mixed.yml").toFile());
+        assertEquals("text", line(output, 0, 0).get("content"));
+        assertEquals("#ICON: DIAMOND", line(output, 0, 1).get("content"));
+        assertEquals("second", line(output, 1, 0).get("content"));
+        assertTrue(Files.notExists(data.resolve("holograms/mixed_line2.yml")));
+        assertTrue(Files.notExists(data.resolve("holograms/mixed_page2.yml")));
+    }
+
+    @Test
+    void importsAllPagesHeightsAndNavigationActionsIntoOneYaml() throws Exception {
+        Path source = root.resolve("legacy"); Files.createDirectories(source);
+        Files.write(source.resolve("leaderboard.yml"), ("location: world:0:64:0\npages:\n"
+                + "- lines:\n"
+                + "  - content: '&6All time'\n"
+                + "    height: 0.5\n"
+                + "  - content: '&fFirst'\n"
+                + "    height: 0.2\n"
+                + "  actions:\n"
+                + "    LEFT:\n"
+                + "    - NEXT_PAGE\n"
+                + "- lines:\n"
+                + "  - content: '&eWeekly'\n"
+                + "    height: 0.4\n"
+                + "  actions:\n"
+                + "    LEFT:\n"
+                + "    - PAGE:1\n").getBytes(StandardCharsets.UTF_8));
+        Path data = root.resolve("data");
+
+        DecentHologramsImporter.ImportResult result =
+                new DecentHologramsImporter(root, data).importYaml("legacy", false);
+
+        assertEquals(1, result.getImported());
+        YamlConfiguration output = YamlConfiguration.loadConfiguration(
+                data.resolve("holograms/leaderboard.yml").toFile());
+        assertEquals(2, output.getMapList("pages").size());
+        assertEquals("&6All time", line(output, 0, 0).get("content"));
+        assertEquals(0.5d, ((Number) line(output, 0, 0).get("height")).doubleValue());
+        assertEquals("NEXT_PAGE", actions(output, 0, "LEFT").get(0));
+        assertEquals("&eWeekly", line(output, 1, 0).get("content"));
+        assertEquals("PAGE:1", actions(output, 1, "LEFT").get(0));
+        String serialized = new String(Files.readAllBytes(
+                data.resolve("holograms/leaderboard.yml")), StandardCharsets.UTF_8);
+        assertTrue(serialized.contains("pages:\n- lines:\n  - content: '&6All time'\n    height: 0.5"));
+        assertTrue(serialized.contains("  actions:\n    LEFT:\n    - NEXT_PAGE"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> line(YamlConfiguration output, int pageIndex, int lineIndex) {
+        Map<String, Object> page = (Map<String, Object>) (Map<?, ?>)
+                output.getMapList("pages").get(pageIndex);
+        return ((List<Map<String, Object>>) page.get("lines")).get(lineIndex);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> actions(YamlConfiguration output, int pageIndex, String click) {
+        Map<String, Object> page = (Map<String, Object>) (Map<?, ?>)
+                output.getMapList("pages").get(pageIndex);
+        return (List<String>) ((Map<String, Object>) page.get("actions")).get(click);
     }
 }

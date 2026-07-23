@@ -87,6 +87,20 @@ public class DisplayRenderCoordinator {
         }
     }
 
+    public void updateContent(DisplayBase display, PlatformPlayer player) {
+        try {
+            RenderObjectHandle handle = getRenderObjectHandle(display);
+            DisplayRenderContext context = getDisplayRenderContext(player);
+            LogicalRenderState currentState = logicalRenderStateManager.getCurrentState(
+                    handle.getId(), player.getUniqueId());
+            LogicalRenderState state = logicalRenderStateService.refreshContent(display, context, currentState);
+            logicalRenderStateManager.updateState(handle.getId(), player.getUniqueId(), state);
+            renderService.render(handle, state, context);
+        } catch (Exception e) {
+            Log.warn("Failed to refresh display '%s' for player '%s'.", e, display.getName(), player.getName());
+        }
+    }
+
     public void postProcess(DisplayBase display) {
         for (PlatformPlayer player : playerService.getOnlinePlayers()) {
             renderLogicalState(display, player);

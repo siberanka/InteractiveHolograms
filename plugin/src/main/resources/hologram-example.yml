@@ -5,8 +5,8 @@
 # The schema manager adds missing entries automatically. If it must repair or
 # remove an invalid entry, it first creates a timestamped .backup-*.yml file.
 
-# Managed schema version. Current and only valid value: 3.
-schema-version: 3
+# Managed schema version. Current and only valid value: 4.
+schema-version: 4
 
 # Packet display type. Options: TEXT, ITEM, BLOCK.
 type: TEXT
@@ -41,6 +41,12 @@ permission: ''
 # Setting this to false through a command removes the disk file while leaving
 # the runtime hologram active until reload/restart.
 persistent: true
+
+# Minimum packet hitbox dimensions in blocks. Valid range: 0.1..16.0.
+# TEXT holograms automatically expand beyond these minimums to cover their
+# longest formatted line and tallest page. Other visual types use these values.
+hitbox_width: 1.0
+hitbox_height: 1.0
 
 # Client-facing mode. Options:
 # CENTER     - faces the viewer on both axes.
@@ -77,7 +83,10 @@ glowing_color: disabled
 update_text_interval: -1
 
 # TEXT settings -------------------------------------------------------------
-# Formatted text lines. Used only when type is TEXT. Every format may be mixed:
+# Text pages. Used only when type is TEXT. A page contains ordered lines and
+# its own click actions. Every line has content plus vertical spacing in blocks.
+# height accepts 0.01..16.0; 0.3 matches the normal DecentHolograms spacing.
+# Every text format may be mixed:
 # - MiniMessage: <aqua>, <#12ab34>, <bold>, <gradient:#f00:#00f>,
 #   <rainbow>, <transition:#f00:#00f:0.5>, <reset>, <newline> and <br>.
 # - Legacy: &a, §a, &l, plus long RGB forms such as &x&1&2&A&B&3&4.
@@ -90,9 +99,24 @@ update_text_interval: -1
 # Placeholder output may itself contain formatting or another placeholder; nested
 # resolution is capped at three passes and all processed lines are length-bounded.
 # Quote YAML values containing #, &, < or >, as in the examples below.
-text:
-  - '<gold><bold>InteractiveHolograms</bold>'
-  - '<gray>Welcome, <aqua>%player_name%</aqua>!'
+# Page actions support LEFT, RIGHT, SHIFT_LEFT and SHIFT_RIGHT. Navigation
+# actions are NEXT_PAGE, PREV_PAGE and PAGE:<one-based-page-number>. Page
+# selection is independent for every viewer.
+pages:
+- lines:
+  - content: '<gold><bold>InteractiveHolograms</bold>'
+    height: 0.5
+  - content: '<gray>Welcome, <aqua>%player_name%</aqua>!'
+    height: 0.3
+  actions:
+    LEFT:
+    - NEXT_PAGE
+- lines:
+  - content: '<aqua>This is page two.'
+    height: 0.4
+  actions:
+    LEFT:
+    - PAGE:1
 
 # Draw the vanilla text shadow. Options: true, false.
 text_shadow: false
@@ -144,8 +168,10 @@ model: ''
 # Animation selection metadata. Empty uses the model's default/spawn behavior.
 animation: ''
 
-# Click actions. The first action automatically enables the packet hitbox; an
-# empty map disables it. Click groups: LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT.
+# Global click actions. These are combined with the active page actions for
+# TEXT holograms. The first global or page action automatically enables a
+# packet-only hitbox covering the complete hologram. An empty map disables
+# global actions. Click groups: LEFT, RIGHT, SHIFT_LEFT, SHIFT_RIGHT.
 # Common actions: MESSAGE:<text>, COMMAND:<command>, CONSOLE:<command>,
 # SOUND:<sound>[:volume:pitch]. Use {player} for the player name.
 actions:

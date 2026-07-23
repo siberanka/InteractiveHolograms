@@ -48,13 +48,17 @@ public class DisplayCloneService {
         }
         Map<AttributeKey<?>, DisplayAttribute<?>> clonedAttributes = cloneAttributes(display.getAttributesMap());
         clone.setAttributes(clonedAttributes);
+        clone.setActions(display.getActions());
+        clone.setModelProvider(display.getModelProvider());
+        clone.setModel(display.getModel());
+        clone.setAnimation(display.getAnimation());
         return clone;
     }
 
     private TextDisplay cloneTextDisplay(TextDisplay display, String newName) {
         DisplaySettings settings = cloneSettings(display);
         TextDisplay clone = new TextDisplay(newName, display.getLocation(), settings);
-        clone.setLines(display.getLines());
+        clone.setPages(display.getPages());
         return clone;
     }
 
@@ -73,12 +77,7 @@ public class DisplayCloneService {
     }
 
     private DisplaySettings cloneSettings(DisplayBase source) {
-        DisplaySettings sourceSettings = source.getSettings();
-        DisplaySettings settings = new DisplaySettings();
-        settings.setEnabled(sourceSettings.isEnabled());
-        settings.setDisplayRange(sourceSettings.getDisplayRange());
-        settings.setUpdateInterval(sourceSettings.getUpdateInterval());
-        return settings;
+        return source.getSettings().copy();
     }
 
     private Map<AttributeKey<?>, DisplayAttribute<?>> cloneAttributes(Map<AttributeKey<?>, DisplayAttribute<?>> attributes) {

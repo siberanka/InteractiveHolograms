@@ -23,6 +23,8 @@ import com.siberanka.interactiveholograms.display.DisplayBase;
 import com.siberanka.interactiveholograms.display.DisplaySettings;
 import com.siberanka.interactiveholograms.display.ItemDisplay;
 import com.siberanka.interactiveholograms.display.TextDisplay;
+import com.siberanka.interactiveholograms.display.TextDisplayLine;
+import com.siberanka.interactiveholograms.display.TextDisplayPage;
 import com.siberanka.interactiveholograms.display.attribute.AttributeConfigMapper;
 import com.siberanka.interactiveholograms.display.attribute.DisplayAttribute;
 import com.siberanka.interactiveholograms.display.attribute.value.AttributeValue;
@@ -31,6 +33,7 @@ import com.siberanka.interactiveholograms.display.config.dto.ConfigDecentLocatio
 import com.siberanka.interactiveholograms.display.config.dto.ConfigDisplay;
 import com.siberanka.interactiveholograms.display.config.dto.ConfigDisplaySettings;
 import com.siberanka.interactiveholograms.display.config.dto.ConfigTextPage;
+import com.siberanka.interactiveholograms.display.config.dto.ConfigTextLine;
 import com.siberanka.interactiveholograms.display.config.dto.ConfigHitbox;
 import com.siberanka.interactiveholograms.api.actions.Action;
 import com.siberanka.interactiveholograms.api.actions.ClickType;
@@ -39,7 +42,6 @@ import com.siberanka.interactiveholograms.platform.api.capability.PlatformMateri
 import com.siberanka.interactiveholograms.platform.api.data.DecentLocation;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
@@ -114,7 +116,23 @@ public class DisplayConfigMapper {
             throw new DisplayConfigException("Text display must have at least one page");
         }
         TextDisplay textDisplay = new TextDisplay(dto.getName(), location, settings);
-        textDisplay.setLines(dto.getPages().get(0).getLines());
+        List<TextDisplayPage> domainPages = new ArrayList<>();
+        for (ConfigTextPage page : pages) {
+            if (page == null || page.getLines() == null || page.getLines().isEmpty()) {
+                continue;
+            }
+            List<TextDisplayLine> lines = page.getLines().stream()
+                    .filter(Objects::nonNull)
+                    .map(line -> new TextDisplayLine(line.getContent(), line.getHeight()))
+                    .collect(Collectors.toList());
+            if (!lines.isEmpty()) {
+                domainPages.add(new TextDisplayPage(lines, actionsToDomain(page.getActions(), dto.getName())));
+            }
+        }
+        if (domainPages.isEmpty()) {
+            throw new DisplayConfigException("Text display must have at least one non-empty page");
+        }
+        textDisplay.setPages(domainPages);
         return textDisplay;
     }
 
@@ -167,13 +185,21 @@ public class DisplayConfigMapper {
     }
 
     private List<ConfigTextPage> pagesToDto(TextDisplay domain) {
-        return Collections.singletonList(pageToDto(domain.getLines()));
+        return domain.getPages().stream().map(this::pageToDto).collect(Collectors.toList());
     }
 
-    private ConfigTextPage pageToDto(List<String> lines) {
+    private ConfigTextPage pageToDto(TextDisplayPage page) {
         ConfigTextPage pageDto = new ConfigTextPage();
-        pageDto.setLines(lines);
+        pageDto.setLines(page.getLines().stream().map(this::lineToDto).collect(Collectors.toList()));
+        pageDto.setActions(actionsToDto(page.getActions()));
         return pageDto;
+    }
+
+    private ConfigTextLine lineToDto(TextDisplayLine line) {
+        ConfigTextLine dto = new ConfigTextLine();
+        dto.setContent(line.getContent());
+        dto.setHeight(line.getHeight());
+        return dto;
     }
 
     private ConfigDecentLocation locationToDto(DecentLocation location) {
@@ -229,8 +255,12 @@ public class DisplayConfigMapper {
     }
 
     private Map<String, List<String>> actionsToDto(DisplayBase domain) {
+        return actionsToDto(domain.getActions());
+    }
+
+    private Map<String, List<String>> actionsToDto(Map<ClickType, List<Action>> configured) {
         Map<String, List<String>> result = new java.util.LinkedHashMap<>();
-        domain.getActions().forEach((clickType, actions) -> result.put(
+        configured.forEach((clickType, actions) -> result.put(
                 clickType.name(), actions.stream().map(Action::toString).collect(Collectors.toList())
         ));
         return result;

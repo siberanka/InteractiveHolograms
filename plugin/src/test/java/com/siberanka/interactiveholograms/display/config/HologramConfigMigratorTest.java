@@ -27,7 +27,7 @@ class HologramConfigMigratorTest {
         boolean changed = new HologramConfigMigrator().canonicalize(root);
 
         assertTrue(changed);
-        assertEquals(3, root.node("schema-version").getInt());
+        assertEquals(4, root.node("schema-version").getInt());
         assertEquals("TEXT", root.node("type").getString());
         assertEquals("CENTER", root.node("billboard").getString());
         assertEquals(15, root.node("block_brightness").getInt());
@@ -51,7 +51,33 @@ class HologramConfigMigratorTest {
 
         assertEquals(2.0f, internal.node("attributes", "scale", "value", "x").getFloat());
         assertTrue(internal.node("attributes", "text-shadow", "value").getBoolean());
-        assertEquals("hello", internal.node("pages", 0, "lines", 0).getString());
+        assertEquals("hello", internal.node("pages", 0, "lines", 0, "content").getString());
+        assertEquals(0.3d, internal.node("pages", 0, "lines", 0, "height").getDouble());
+    }
+
+    @Test
+    void preservesMultiplePagesSpacingAndActions() {
+        ConfigurationNode root = BasicConfigurationNode.root();
+        root.node("schema-version").raw(3);
+        root.node("type").raw("TEXT");
+        root.node("pages", 0, "lines", 0, "content").raw("first");
+        root.node("pages", 0, "lines", 0, "height").raw(0.5d);
+        root.node("pages", 0, "actions", "LEFT").raw(Arrays.asList("NEXT_PAGE"));
+        root.node("pages", 1, "lines", 0).raw("second");
+        root.node("pages", 1, "actions", "LEFT").raw(Arrays.asList("PAGE:1"));
+
+        HologramConfigMigrator migrator = new HologramConfigMigrator();
+        assertTrue(migrator.canonicalize(root));
+        ConfigurationNode internal = migrator.toInternal(root);
+
+        assertEquals(4, internal.node("schema-version").getInt());
+        assertEquals("first", internal.node("pages", 0, "lines", 0, "content").getString());
+        assertEquals(0.5d, internal.node("pages", 0, "lines", 0, "height").getDouble());
+        assertEquals("NEXT_PAGE", internal.node("pages", 0, "actions", "LEFT", 0).getString());
+        assertEquals("second", internal.node("pages", 1, "lines", 0, "content").getString());
+        assertEquals(0.3d, internal.node("pages", 1, "lines", 0, "height").getDouble());
+        assertTrue(internal.node("text").virtual());
+        assertFalse(migrator.canonicalize(root), "Canonical schema must not create a backup on every reload");
     }
 
     @Test

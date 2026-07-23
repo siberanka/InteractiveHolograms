@@ -23,19 +23,32 @@ import org.spongepowered.configurate.objectmapping.meta.Required;
 import org.spongepowered.configurate.objectmapping.meta.Setting;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @ConfigSerializable
 public class ConfigTextPage {
     @Setting
     @Required
-    private List<String> lines = new ArrayList<>();
+    private List<ConfigTextLine> lines = new ArrayList<>();
 
-    public List<String> getLines() {
+    @Setting
+    private Map<String, List<String>> actions = new HashMap<>();
+
+    public List<ConfigTextLine> getLines() {
         return lines;
     }
 
-    public void setLines(List<String> lines) {
+    public void setLines(List<ConfigTextLine> lines) {
         this.lines = lines;
+    }
+
+    public Map<String, List<String>> getActions() {
+        return actions;
+    }
+
+    public void setActions(Map<String, List<String>> actions) {
+        this.actions = actions == null ? new HashMap<>() : actions;
     }
 }

@@ -1,7 +1,6 @@
 package com.siberanka.interactiveholograms.api.actions;
 
 import com.google.common.collect.Maps;
-import com.siberanka.interactiveholograms.api.InteractiveHolograms;
 import com.siberanka.interactiveholograms.api.InteractiveHologramsAPI;
 import com.siberanka.interactiveholograms.api.commands.CommandValidator;
 import com.siberanka.interactiveholograms.api.holograms.Hologram;
@@ -22,8 +21,6 @@ import java.util.Map;
 import java.util.Locale;
 
 public abstract class ActionType {
-
-    private static final InteractiveHolograms INTERACTIVE_HOLOGRAMS = InteractiveHologramsAPI.get();
 
     /*
      * Cache
@@ -67,7 +64,7 @@ public abstract class ActionType {
             Validate.notNull(player);
 
             String string = String.join(" ", args);
-            Bukkit.getScheduler().runTask(INTERACTIVE_HOLOGRAMS.getPlugin(), () -> {
+            Bukkit.getScheduler().runTask(InteractiveHologramsAPI.get().getPlugin(), () -> {
                 //
                 player.chat(PAPI.setPlaceholders(player, string.replace("{player}", player.getName())));
             });
@@ -81,7 +78,7 @@ public abstract class ActionType {
             Validate.notNull(player);
 
             String string = String.join(" ", args);
-            Bukkit.getScheduler().runTask(INTERACTIVE_HOLOGRAMS.getPlugin(), () -> {
+            Bukkit.getScheduler().runTask(InteractiveHologramsAPI.get().getPlugin(), () -> {
                 //
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), PAPI.setPlaceholders(player, string.replace("{player}", player.getName())));
             });
@@ -114,7 +111,7 @@ public abstract class ActionType {
             if (location == null) {
                 return false;
             }
-            Bukkit.getScheduler().runTask(INTERACTIVE_HOLOGRAMS.getPlugin(), () -> player.teleport(location));
+            Bukkit.getScheduler().runTask(InteractiveHologramsAPI.get().getPlugin(), () -> player.teleport(location));
             return true;
         }
     };

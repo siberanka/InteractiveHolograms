@@ -51,7 +51,7 @@ public class TextDisplayTypeDefinition implements DisplayTypeDefinition<List<Com
     public CompiledDisplayContent<List<CompiledTextDisplayLine>> resolveContent(DisplayBase display, DisplayRenderContext context) {
         TextDisplay textDisplay = getTextDisplay(display);
 
-        List<String> displayLines = textDisplay.getLines();
+        List<String> displayLines = textDisplay.getLines(context.getPlayer().getUniqueId());
         List<String> resolvedContent = new ArrayList<>(displayLines.size());
         List<CompiledTextDisplayLine> resolvedLines = new ArrayList<>(displayLines.size());
         boolean anyLineAnimated = false;

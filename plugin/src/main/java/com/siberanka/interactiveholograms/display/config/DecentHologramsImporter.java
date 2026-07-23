@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,6 +23,9 @@ import java.util.stream.Stream;
 public final class DecentHologramsImporter {
     private static final int MAX_FILES = 10_000;
     private static final long MAX_FILE_BYTES = 16L * 1024L * 1024L;
+    private static final int MAX_PAGES = 128;
+    private static final int MAX_LINES_PER_PAGE = 512;
+    private static final int MAX_CONTENT_LENGTH = 32_767;
     private static final DateTimeFormatter BACKUP_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private final Path serverRoot;
     private final Path hologramsDirectory;
@@ -86,38 +90,38 @@ public final class DecentHologramsImporter {
         if (location == null) return Collections.emptyList();
         List<?> pages = input.getList("pages", Collections.emptyList());
         if (pages.isEmpty()) return Collections.emptyList();
-        List<Converted> outputs = new ArrayList<>();
-        for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
-            if (!(pages.get(pageIndex) instanceof Map)) continue;
-            Map<?, ?> page = (Map<?, ?>) pages.get(pageIndex);
+        List<PageData> convertedPages = new ArrayList<>();
+        for (Object rawPage : pages.subList(0, Math.min(pages.size(), MAX_PAGES))) {
+            if (!(rawPage instanceof Map)) continue;
+            Map<?, ?> page = (Map<?, ?>) rawPage;
             Object rawLines = page.get("lines");
             if (!(rawLines instanceof List)) continue;
-            List<String> text = new ArrayList<>();
-            for (Object rawLine : (List<?>) rawLines) {
+            List<LineData> lines = new ArrayList<>();
+            List<?> sourceLines = (List<?>) rawLines;
+            for (Object rawLine : sourceLines.subList(0, Math.min(sourceLines.size(), MAX_LINES_PER_PAGE))) {
                 Object content = rawLine instanceof Map ? ((Map<?, ?>) rawLine).get("content") : rawLine;
-                if (content != null) text.add(String.valueOf(content));
-            }
-            if (text.isEmpty()) continue;
-            String pageSuffix = pageIndex == 0 ? "" : "_page" + (pageIndex + 1);
-            Object actions = page.get("actions");
-            boolean split = text.size() > 1 && text.stream().anyMatch(this::isVisual);
-            if (split) {
-                for (int lineIndex = 0; lineIndex < text.size(); lineIndex++) {
-                    String suffix = pageSuffix + (lineIndex == 0 ? "" : "_line" + (lineIndex + 1));
-                    outputs.add(new Converted(suffix, createOutput(input, location,
-                            Collections.singletonList(text.get(lineIndex)), actions, -lineIndex * 0.3d)));
+                if (content == null) continue;
+                String value = String.valueOf(content);
+                if (value.length() > MAX_CONTENT_LENGTH) {
+                    value = value.substring(0, MAX_CONTENT_LENGTH);
                 }
-            } else outputs.add(new Converted(pageSuffix, createOutput(input, location, text, actions, 0.0d)));
+                double height = rawLine instanceof Map
+                        ? normalizedHeight(((Map<?, ?>) rawLine).get("height")) : 0.3d;
+                lines.add(new LineData(value, height));
+            }
+            if (!lines.isEmpty()) {
+                convertedPages.add(new PageData(lines, normalizeActions(page.get("actions"))));
+            }
         }
-        return outputs;
+        if (convertedPages.isEmpty()) return Collections.emptyList();
+        return Collections.singletonList(new Converted("", createOutput(input, location, convertedPages)));
     }
 
-    private YamlConfiguration createOutput(YamlConfiguration input, String[] location, List<String> text,
-                                            Object actions, double yOffset) {
+    private YamlConfiguration createOutput(YamlConfiguration input, String[] location, List<PageData> pages) {
         YamlConfiguration output = new YamlConfiguration();
         output.set("schema-version", HologramConfigMigrator.SCHEMA_VERSION);
         output.set("location.world", location[0]);
-        output.set("location.x", number(location[1])); output.set("location.y", number(location[2]) + yOffset); output.set("location.z", number(location[3]));
+        output.set("location.x", number(location[1])); output.set("location.y", number(location[2])); output.set("location.z", number(location[3]));
         output.set("location.yaw", location.length > 4 ? number(location[4]) : 0.0d);
         output.set("location.pitch", location.length > 5 ? number(location[5]) : 0.0d);
         output.set("enabled", input.getBoolean("enabled", true));
@@ -125,8 +129,15 @@ public final class DecentHologramsImporter {
         output.set("update_text_interval", input.getInt("update-interval", -1));
         output.set("permission", input.getString("permission", ""));
         output.set("billboard", facing(input.getString("facing", "CENTER")));
-        configureContent(output, text);
-        output.set("actions", actions instanceof Map ? actions : Collections.emptyMap());
+        if (pages.size() == 1 && pages.get(0).lines.size() == 1
+                && isVisual(pages.get(0).lines.get(0).content)) {
+            configureVisualContent(output, pages.get(0).lines.get(0).content);
+            output.set("actions", pages.get(0).actions);
+        } else {
+            output.set("type", "TEXT");
+            output.set("pages", toYamlPages(pages));
+            output.set("actions", Collections.emptyMap());
+        }
         return output;
     }
 
@@ -136,27 +147,66 @@ public final class DecentHologramsImporter {
                 || value.startsWith("#SMALLHEAD:") || value.startsWith("#ENTITY:");
     }
 
-    private void configureContent(YamlConfiguration output, List<String> lines) {
-        String single = lines.size() == 1 ? lines.get(0).trim() : null;
-        if (single != null && single.regionMatches(true, 0, "#ICON:", 0, 6)) {
+    private void configureVisualContent(YamlConfiguration output, String content) {
+        String single = content.trim();
+        if (single.regionMatches(true, 0, "#ICON:", 0, 6)) {
             output.set("type", "ITEM");
             output.set("item", legacyMaterial(single.substring(6)));
             output.set("item_provider", "AUTO");
             return;
         }
-        if (single != null && (single.regionMatches(true, 0, "#HEAD:", 0, 6)
-                || single.regionMatches(true, 0, "#SMALLHEAD:", 0, 11))) {
+        if (single.regionMatches(true, 0, "#HEAD:", 0, 6)
+                || single.regionMatches(true, 0, "#SMALLHEAD:", 0, 11)) {
             output.set("type", "ITEM"); output.set("item", "minecraft:player_head"); output.set("item_provider", "VANILLA");
             return;
         }
-        if (single != null && single.regionMatches(true, 0, "#ENTITY:", 0, 8)) {
+        if (single.regionMatches(true, 0, "#ENTITY:", 0, 8)) {
             String model = safeIdentifier(single.substring(8));
             output.set("type", "ITEM"); output.set("item", "minecraft:barrier"); output.set("item_provider", "VANILLA");
             output.set("scale_x", 0.0d); output.set("scale_y", 0.0d); output.set("scale_z", 0.0d);
             output.set("model_provider", "MYTHICMOBS"); output.set("model", model);
-            return;
         }
-        output.set("type", "TEXT"); output.set("text", lines);
+    }
+
+    private List<Map<String, Object>> toYamlPages(List<PageData> pages) {
+        List<Map<String, Object>> result = new ArrayList<>(pages.size());
+        for (PageData page : pages) {
+            Map<String, Object> pageMap = new LinkedHashMap<>();
+            List<Map<String, Object>> lines = new ArrayList<>(page.lines.size());
+            for (LineData line : page.lines) {
+                Map<String, Object> lineMap = new LinkedHashMap<>();
+                lineMap.put("content", line.content);
+                lineMap.put("height", line.height);
+                lines.add(lineMap);
+            }
+            pageMap.put("lines", lines);
+            pageMap.put("actions", page.actions);
+            result.add(pageMap);
+        }
+        return result;
+    }
+
+    private Map<String, List<String>> normalizeActions(Object raw) {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        if (!(raw instanceof Map)) return result;
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) raw).entrySet()) {
+            if (entry.getKey() == null || !(entry.getValue() instanceof List)) continue;
+            List<String> actions = ((List<?>) entry.getValue()).stream()
+                    .filter(java.util.Objects::nonNull)
+                    .limit(128)
+                    .map(String::valueOf)
+                    .filter(value -> value.length() <= 4096)
+                    .collect(Collectors.toList());
+            if (!actions.isEmpty()) {
+                result.put(String.valueOf(entry.getKey()).toUpperCase(Locale.ROOT), actions);
+            }
+        }
+        return result;
+    }
+
+    private double normalizedHeight(Object raw) {
+        double value = raw instanceof Number ? ((Number) raw).doubleValue() : 0.3d;
+        return Double.isFinite(value) ? Math.max(0.01d, Math.min(16.0d, value)) : 0.3d;
     }
 
     private String legacyMaterial(String input) {
@@ -209,6 +259,24 @@ public final class DecentHologramsImporter {
     private static final class Converted {
         private final String suffix; private final YamlConfiguration yaml;
         private Converted(String suffix, YamlConfiguration yaml) { this.suffix = suffix; this.yaml = yaml; }
+    }
+
+    private static final class PageData {
+        private final List<LineData> lines;
+        private final Map<String, List<String>> actions;
+        private PageData(List<LineData> lines, Map<String, List<String>> actions) {
+            this.lines = lines;
+            this.actions = actions;
+        }
+    }
+
+    private static final class LineData {
+        private final String content;
+        private final double height;
+        private LineData(String content, double height) {
+            this.content = content;
+            this.height = height;
+        }
     }
 
     public static final class ImportResult {

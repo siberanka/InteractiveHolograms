@@ -30,7 +30,7 @@ import java.util.Map;
 @ConfigSerializable
 public class ConfigDisplay {
     @Setting("schema-version")
-    private int schemaVersion = 3;
+    private int schemaVersion = 4;
     private transient String name; // Name is extracted from file name.
     @Setting
     @Required

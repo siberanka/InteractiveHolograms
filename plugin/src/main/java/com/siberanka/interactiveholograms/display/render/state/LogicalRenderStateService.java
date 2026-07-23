@@ -54,6 +54,16 @@ public class LogicalRenderStateService {
         return currentState;
     }
 
+    public LogicalRenderState refreshContent(DisplayBase display,
+                                             DisplayRenderContext context,
+                                             LogicalRenderState currentState) {
+        if (currentState == null) {
+            return createNewLogicalDisplayRenderState(display, context);
+        }
+        applyContent(display, currentState, context);
+        return currentState;
+    }
+
     private LogicalRenderState createNewLogicalDisplayRenderState(DisplayBase display, DisplayRenderContext context) {
         LogicalRenderState state = new LogicalRenderState(display.getName(), display.getType());
         state.setLocation(display.getLocation());

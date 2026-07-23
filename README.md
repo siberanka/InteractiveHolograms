@@ -8,12 +8,13 @@ InteractiveHolograms is a packet-only hologram engine for Bukkit-compatible Mine
 
 ## Highlights
 
-- Packet-only rendering and automatic packet hitboxes for clickable holograms
+- Packet-only rendering and bounded packet-hitbox grids that cover complete clickable holograms
+- Viewer-specific multi-page text holograms with per-line spacing and per-page actions
 - Text, item and block display controls: billboard, rotation, scale, translation, light, shadow, background, opacity and alignment
 - Per-hologram visibility, permission, distance, persistence and update settings
 - LEFT, RIGHT, SHIFT_LEFT and SHIFT_RIGHT actions with server-side distance and cooldown validation
 - Safe YAML schema migration: missing values are supplied and repaired files are backed up before invalid values are removed
-- One `/ih import` workflow for DecentHolograms, FancyHolograms, HolographicDisplays, CMI, FutureHolograms, GHolo and Holograms
+- One `/ih import` workflow for DecentHolograms, FancyHolograms, HolographicDisplays, CMI, FutureHolograms, GHolo and Holograms; Decent multi-page files remain one multi-page IH file
 - Bounded, asynchronous import with path confinement, atomic writes and collision-safe overwrite backups
 - Mixed MiniMessage, legacy `&`/`§`, RGB/hex, gradient, rainbow and 16/256/true-color ANSI codes
 - PlaceholderAPI standard, bracket, relational and bounded nested expansion support
@@ -66,7 +67,7 @@ dependencies {
 }
 ```
 
-Replace `VERSION` with a published tag such as `v3.3.1`.
+Replace `VERSION` with a published tag such as `v3.4.0`.
 
 ## Contributing and security
 

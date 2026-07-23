@@ -105,6 +105,10 @@ public class DisplayService {
         renderCoordinator.update(displayBase);
     }
 
+    public void updateDisplayContent(DisplayBase display, PlatformPlayer player) {
+        renderCoordinator.updateContent(display, player);
+    }
+
     public void hideDisplaysForPlayer(PlatformPlayer player) {
         for (DisplayBase display : displays.values()) {
             renderCoordinator.hideDisplayForPlayer(display, player);

@@ -14,6 +14,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.bukkit.entity.Player;
 
 import java.util.Collections;
+import java.util.Arrays;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -59,5 +61,53 @@ class DisplayInteractionServiceTest {
                 Collections.singletonList(mock(Action.class))));
         settings.setEnabled(false);
         assertFalse(DisplayInteractionService.requiresPacketHitbox(display));
+    }
+
+    @Test
+    void pageActionsEnableHitboxAndNavigatePerViewer() {
+        TextDisplay display = new TextDisplay("pages",
+                new DecentLocation("world", 0, 64, 0, 0, 0), new DisplaySettings());
+        com.siberanka.interactiveholograms.display.TextDisplayPage first =
+                new com.siberanka.interactiveholograms.display.TextDisplayPage(
+                        Collections.singletonList(new com.siberanka.interactiveholograms.display.TextDisplayLine(
+                                "first", 0.5d)),
+                        Collections.singletonMap(ClickType.LEFT,
+                                Collections.singletonList(new Action("NEXT_PAGE"))));
+        com.siberanka.interactiveholograms.display.TextDisplayPage second =
+                new com.siberanka.interactiveholograms.display.TextDisplayPage(
+                        Collections.singletonList(new com.siberanka.interactiveholograms.display.TextDisplayLine(
+                                "second", 0.3d)),
+                        Collections.singletonMap(ClickType.LEFT,
+                                Collections.singletonList(new Action("PAGE:1"))));
+        display.setPages(Arrays.asList(first, second));
+        UUID viewerId = UUID.randomUUID();
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(viewerId);
+
+        assertTrue(DisplayInteractionService.requiresPacketHitbox(display));
+        assertTrue(DisplayInteractionService.executeActions(display, player, ClickType.LEFT));
+        assertTrue(display.getPageIndex(viewerId) == 1);
+        assertTrue(DisplayInteractionService.executeActions(display, player, ClickType.LEFT));
+        assertTrue(display.getPageIndex(viewerId) == 0);
+    }
+
+    @Test
+    void textHitboxCoversLongestLineAndTallestPageWithinPacketLimit() {
+        TextDisplay display = new TextDisplay("bounds",
+                new DecentLocation("world", 0, 64, 0, 0, 0), new DisplaySettings());
+        display.setPages(Collections.singletonList(
+                new com.siberanka.interactiveholograms.display.TextDisplayPage(Arrays.asList(
+                        new com.siberanka.interactiveholograms.display.TextDisplayLine(
+                                "This line is deliberately much wider than one block", 0.5d),
+                        new com.siberanka.interactiveholograms.display.TextDisplayLine("second", 2.0d)
+                ), Collections.emptyMap())));
+
+        DisplayInteractionService.HitboxLayout layout =
+                DisplayInteractionService.HitboxLayout.forDisplay(display);
+
+        assertTrue(layout.getWidth() >= 4.0d);
+        assertTrue(layout.getHeight() >= 2.5d);
+        assertTrue(layout.size() > 1);
+        assertTrue(layout.size() <= 64);
     }
 }

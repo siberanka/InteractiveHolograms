@@ -21,12 +21,13 @@ import java.util.Set;
  */
 public final class HologramConfigMigrator {
 
-    public static final int SCHEMA_VERSION = 3;
+    public static final int SCHEMA_VERSION = 4;
     private static final DateTimeFormatter BACKUP_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final Set<String> TYPES = new HashSet<>(Arrays.asList("TEXT", "ITEM", "BLOCK"));
     private static final Set<String> BILLBOARDS = new HashSet<>(Arrays.asList("CENTER", "FIXED", "HORIZONTAL", "VERTICAL"));
     private static final Set<String> ALIGNMENTS = new HashSet<>(Arrays.asList("LEFT", "CENTER", "RIGHT"));
     private static final Set<String> VISIBILITIES = new HashSet<>(Arrays.asList("ALL", "MANUAL", "PERMISSION_REQUIRED"));
+    private static final Set<String> CLICKS = new HashSet<>(Arrays.asList("LEFT", "RIGHT", "SHIFT_LEFT", "SHIFT_RIGHT"));
     private static final Set<String> ITEM_PROVIDERS = new HashSet<>(Arrays.asList("AUTO", "VANILLA", "CRAFTENGINE"));
     private static final Set<String> MODEL_PROVIDERS = new HashSet<>(Arrays.asList("NONE", "BETTERMODEL", "MYTHICMOBS", "MODELENGINE"));
     private static final Set<String> ITEM_DISPLAYS = new HashSet<>(Arrays.asList(
@@ -39,11 +40,14 @@ public final class HologramConfigMigrator {
             "glowing_color", "text", "text_shadow",
             "see_through", "text_alignment", "update_text_interval", "background", "line_width", "text_opacity",
             "item", "item_provider", "item_display", "block", "model_provider", "model", "animation", "actions",
-            "settings", "attributes", "pages"));
+            "hitbox_width", "hitbox_height", "settings", "attributes", "pages"));
 
     public boolean canonicalize(ConfigurationNode root) {
         boolean changed = flattenInternalTree(root);
-        changed |= putDefault(root.node("schema-version"), SCHEMA_VERSION);
+        if (root.node("schema-version").getInt(-1) != SCHEMA_VERSION) {
+            root.node("schema-version").raw(SCHEMA_VERSION);
+            changed = true;
+        }
         changed |= normalizeEnum(root.node("type"), "TEXT", TYPES);
         String type = root.node("type").getString("TEXT");
 
@@ -51,6 +55,8 @@ public final class HologramConfigMigrator {
         changed |= normalizeSpecialInterval(root.node("visibility_distance"), -1, 4096);
         changed |= normalizeEnum(root.node("visibility"), "ALL", VISIBILITIES);
         changed |= putDefault(root.node("persistent"), true);
+        changed |= normalizeDouble(root.node("hitbox_width"), 1.0d, 0.1d, 16.0d);
+        changed |= normalizeDouble(root.node("hitbox_height"), 1.0d, 0.1d, 16.0d);
         changed |= normalizeLocation(root.node("location"));
         changed |= normalizeEnum(root.node("billboard"), "CENTER", BILLBOARDS);
         changed |= normalizeDouble(root.node("scale_x"), 1.0d, -1000.0d, 1000.0d);
@@ -64,19 +70,13 @@ public final class HologramConfigMigrator {
         changed |= clampInteger(root.node("block_brightness"), -1, -1, 15);
         changed |= clampInteger(root.node("sky_brightness"), -1, -1, 15);
         changed |= putDefault(root.node("glowing_color"), "disabled");
-        if (!root.node("actions").isMap()) {
-            root.node("actions").raw(java.util.Collections.emptyMap());
-            changed = true;
-        }
+        changed |= normalizeActionMap(root.node("actions"));
         changed |= normalizeEnum(root.node("model_provider"), "NONE", MODEL_PROVIDERS);
         changed |= putDefault(root.node("model"), "");
         changed |= putDefault(root.node("animation"), "");
 
         if ("TEXT".equals(type)) {
-            if (!root.node("text").isList()) {
-                root.node("text").raw(java.util.Collections.singletonList("InteractiveHolograms"));
-                changed = true;
-            }
+            changed |= normalizeTextPages(root);
             changed |= putDefault(root.node("text_shadow"), false);
             changed |= putDefault(root.node("see_through"), false);
             changed |= normalizeEnum(root.node("text_alignment"), "CENTER", ALIGNMENTS);
@@ -112,6 +112,8 @@ public final class HologramConfigMigrator {
         copy(root.node("visibility"), root.node("settings", "visibility"));
         copy(root.node("permission"), root.node("settings", "permission"));
         copy(root.node("persistent"), root.node("settings", "persistent"));
+        copy(root.node("hitbox_width"), root.node("settings", "hitbox", "width"));
+        copy(root.node("hitbox_height"), root.node("settings", "hitbox", "height"));
 
         attribute(root, "billboard", "billboard_constraints", root.node("billboard").getString("CENTER").toUpperCase(Locale.ROOT));
         vectorAttribute(root, "scale", "scale_x", "scale_y", "scale_z");
@@ -134,7 +136,6 @@ public final class HologramConfigMigrator {
 
         String type = root.node("type").getString("TEXT");
         if ("TEXT".equalsIgnoreCase(type)) {
-            copy(root.node("text"), root.node("pages", 0, "lines"));
             attribute(root, "alignment", "text_alignment", root.node("text_alignment").getString("CENTER").toUpperCase(Locale.ROOT));
             attribute(root, "text-shadow", "boolean", root.node("text_shadow").getBoolean(false));
             attribute(root, "see-through", "boolean", root.node("see_through").getBoolean(false));
@@ -176,12 +177,14 @@ public final class HologramConfigMigrator {
             changed |= copyPresent(settings.node("visibility"), root.node("visibility"));
             changed |= copyPresent(settings.node("permission"), root.node("permission"));
             changed |= copyPresent(settings.node("persistent"), root.node("persistent"));
+            changed |= copyPresent(settings.node("hitbox", "width"), root.node("hitbox_width"));
+            changed |= copyPresent(settings.node("hitbox", "height"), root.node("hitbox_height"));
             settings.raw(null);
         }
         ConfigurationNode pages = root.node("pages");
-        if (!pages.virtual()) {
-            changed |= copyPresent(pages.node(0, "lines"), root.node("text"));
+        if (!pages.virtual() && !pages.isList()) {
             pages.raw(null);
+            changed = true;
         }
         ConfigurationNode attributes = root.node("attributes");
         if (!attributes.virtual()) {
@@ -211,6 +214,131 @@ public final class HologramConfigMigrator {
             attributes.raw(null);
         }
         return changed;
+    }
+
+    private boolean normalizeTextPages(ConfigurationNode root) {
+        boolean changed = false;
+        ConfigurationNode pages = root.node("pages");
+        if (!pages.isList() || pages.childrenList().isEmpty()) {
+            Object rawText = root.node("text").raw();
+            pages.raw(null);
+            int index = 0;
+            if (rawText instanceof Iterable) {
+                for (Object entry : (Iterable<?>) rawText) {
+                    addPageLine(pages, 0, index++, entry == null ? "" : String.valueOf(entry),
+                            com.siberanka.interactiveholograms.display.TextDisplayLine.DEFAULT_HEIGHT);
+                }
+            }
+            if (index == 0) {
+                addPageLine(pages, 0, 0, "InteractiveHolograms",
+                        com.siberanka.interactiveholograms.display.TextDisplayLine.DEFAULT_HEIGHT);
+            }
+            changed = true;
+        }
+
+        int validPages = 0;
+        for (ConfigurationNode page : pages.childrenList()) {
+            if (!page.isMap()) {
+                page.raw(null);
+                changed = true;
+            }
+            ConfigurationNode lines = page.node("lines");
+            if (!lines.isList() || lines.childrenList().isEmpty()) {
+                lines.raw(null);
+                addPageLineNode(lines.node(0), "InteractiveHolograms",
+                        com.siberanka.interactiveholograms.display.TextDisplayLine.DEFAULT_HEIGHT);
+                changed = true;
+            }
+            for (ConfigurationNode line : lines.childrenList()) {
+                if (!line.isMap()) {
+                    String content = line.getString("");
+                    line.raw(null);
+                    addPageLineNode(line, content,
+                            com.siberanka.interactiveholograms.display.TextDisplayLine.DEFAULT_HEIGHT);
+                    changed = true;
+                } else {
+                    String content = line.node("content").getString();
+                    if (content == null) {
+                        line.node("content").raw("");
+                        changed = true;
+                    }
+                    changed |= normalizeDouble(line.node("height"),
+                            com.siberanka.interactiveholograms.display.TextDisplayLine.DEFAULT_HEIGHT,
+                            0.01d, 16.0d);
+                    for (Map.Entry<Object, ? extends ConfigurationNode> entry
+                            : line.childrenMap().entrySet()) {
+                        String key = String.valueOf(entry.getKey());
+                        if (!"content".equals(key) && !"height".equals(key)) {
+                            entry.getValue().raw(null);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            changed |= normalizeActionMap(page.node("actions"));
+            for (Map.Entry<Object, ? extends ConfigurationNode> entry : page.childrenMap().entrySet()) {
+                String key = String.valueOf(entry.getKey());
+                if (!"lines".equals(key) && !"actions".equals(key)) {
+                    entry.getValue().raw(null);
+                    changed = true;
+                }
+            }
+            validPages++;
+        }
+        if (validPages == 0) {
+            addPageLine(pages, 0, 0, "InteractiveHolograms",
+                    com.siberanka.interactiveholograms.display.TextDisplayLine.DEFAULT_HEIGHT);
+            pages.node(0, "actions").raw(java.util.Collections.emptyMap());
+            changed = true;
+        }
+        if (!root.node("text").virtual()) {
+            root.node("text").raw(null);
+            changed = true;
+        }
+        return changed;
+    }
+
+    private boolean normalizeActionMap(ConfigurationNode actions) {
+        if (!actions.isMap()) {
+            actions.raw(java.util.Collections.emptyMap());
+            return true;
+        }
+        Map<String, java.util.List<String>> normalized = new java.util.LinkedHashMap<>();
+        for (Map.Entry<Object, ? extends ConfigurationNode> entry : actions.childrenMap().entrySet()) {
+            String click = String.valueOf(entry.getKey()).toUpperCase(Locale.ROOT);
+            ConfigurationNode values = entry.getValue();
+            if (!CLICKS.contains(click) || !values.isList()) {
+                continue;
+            }
+            java.util.List<String> validActions = new java.util.ArrayList<>();
+            for (ConfigurationNode value : values.childrenList()) {
+                String action = value.getString();
+                if (action != null && !action.trim().isEmpty() && action.length() <= 4096) {
+                    validActions.add(action);
+                }
+            }
+            if (!validActions.isEmpty()) {
+                normalized.put(click, validActions);
+            }
+        }
+        if (!normalized.equals(actions.raw())) {
+            actions.raw(normalized);
+            return true;
+        }
+        return false;
+    }
+
+    private void addPageLine(ConfigurationNode pages, int pageIndex, int lineIndex,
+                             String content, double height) {
+        addPageLineNode(pages.node(pageIndex, "lines", lineIndex), content, height);
+        if (!pages.node(pageIndex, "actions").isMap()) {
+            pages.node(pageIndex, "actions").raw(java.util.Collections.emptyMap());
+        }
+    }
+
+    private void addPageLineNode(ConfigurationNode line, String content, double height) {
+        line.node("content").raw(content);
+        line.node("height").raw(height);
     }
 
     private boolean flattenAttribute(ConfigurationNode attributes, String key, ConfigurationNode destination) {
