@@ -71,7 +71,11 @@ class DisplayRangeDisplayCommand extends DecentCommand {
             if (args.length == 1) {
                 return TabCompleteHandler.getPartialMatches(args[0], displayService.getRegisteredDisplayNames());
             } else if (args.length == 2) {
-                return TabCompleteHandler.getPartialMatches(args[1], "16", "32", "64", "128", "256");
+                DisplayBase display = displayService.getDisplay(args[0]);
+                String current = display == null ? null
+                        : String.valueOf(display.getSettings().getDisplayRange());
+                return TabCompleteHandler.getPartialMatchesWithCurrent(
+                        args[1], current, "16", "32", "64", "128", "256");
             }
             return null;
         };

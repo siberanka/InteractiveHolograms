@@ -19,6 +19,7 @@ InteractiveHolograms is a packet-only hologram engine for Bukkit-compatible Mine
 - PlaceholderAPI standard, bracket, relational and bounded nested expansion support
 - CraftEngine custom-item IDs plus entity-free BetterModel and ModelEngine models
 - Dynamic command completion for installed BetterModel models, MythicMobs mob types, ModelEngine models and their discoverable animations
+- Context-aware editing completion that offers the selected line or setting's current value first
 - Full in-game editing through `/ih holograms ...`
 - GitHub Releases update checks with an in-game clickable download link
 
@@ -65,7 +66,7 @@ dependencies {
 }
 ```
 
-Replace `VERSION` with a published tag such as `v3.3.0`.
+Replace `VERSION` with a published tag such as `v3.3.1`.
 
 ## Contributing and security
 

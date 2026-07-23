@@ -45,9 +45,27 @@ class DisplayTabCompleteHelper {
         if (!(display instanceof TextDisplay)) {
             return Collections.emptyList();
         }
-        return TabCompleteHandler.getPartialMatches(input, TabCompleteHandler.getPartialMatches(input, IntStream
+        return TabCompleteHandler.getPartialMatches(input, IntStream
                 .rangeClosed(1, ((TextDisplay) display).getLines().size())
                 .boxed().map(String::valueOf)
-                .collect(Collectors.toList())));
+                .collect(Collectors.toList()));
+    }
+
+    List<String> getLineContent(String displayName, String lineIndex, String input) {
+        DisplayBase display = displayService.getDisplay(displayName);
+        if (!(display instanceof TextDisplay)) {
+            return Collections.emptyList();
+        }
+        int index;
+        try {
+            index = Integer.parseInt(lineIndex) - 1;
+        } catch (NumberFormatException ignored) {
+            return Collections.emptyList();
+        }
+        List<String> lines = ((TextDisplay) display).getLines();
+        if (index < 0 || index >= lines.size()) {
+            return Collections.emptyList();
+        }
+        return TabCompleteHandler.getPartialMatchesWithCurrent(input, lines.get(index), Collections.emptyList());
     }
 }

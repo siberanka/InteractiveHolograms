@@ -73,6 +73,8 @@ class TextDisplaySetLineCommand extends DecentCommand {
                 return tabCompleteHelper.getDisplayNames(args[0]);
             } else if (args.length == 2) {
                 return tabCompleteHelper.getLineIndexes(args[0], args[1]);
+            } else if (args.length == 3) {
+                return tabCompleteHelper.getLineContent(args[0], args[1], args[2]);
             }
             return null;
         };

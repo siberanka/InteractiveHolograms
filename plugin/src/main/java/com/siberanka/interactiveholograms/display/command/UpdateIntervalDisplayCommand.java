@@ -69,7 +69,10 @@ class UpdateIntervalDisplayCommand extends DecentCommand {
             if (args.length == 1) {
                 return TabCompleteHandler.getPartialMatches(args[0], displayService.getRegisteredDisplayNames());
             } else if (args.length == 2) {
-                return TabCompleteHandler.getPartialMatches(args[1], "20", "40", "100");
+                DisplayBase display = displayService.getDisplay(args[0]);
+                String current = display == null ? null
+                        : String.valueOf(display.getSettings().getUpdateInterval());
+                return TabCompleteHandler.getPartialMatchesWithCurrent(args[1], current, "20", "40", "100");
             }
             return null;
         };

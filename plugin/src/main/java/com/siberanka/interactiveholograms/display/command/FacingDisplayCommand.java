@@ -77,9 +77,15 @@ class FacingDisplayCommand extends DecentCommand {
             if (args.length == 1) {
                 return TabCompleteHandler.getPartialMatches(args[0], displayService.getRegisteredDisplayNames());
             } else if (args.length == 2) {
-                return TabCompleteHandler.getPartialMatches(args[1], "0", "45", "90", "135", "180", "-45", "-90", "-135");
+                DisplayBase display = displayService.getDisplay(args[0]);
+                String current = display == null ? null : String.valueOf(display.getLocation().getYaw());
+                return TabCompleteHandler.getPartialMatchesWithCurrent(
+                        args[1], current, "0", "45", "90", "135", "180", "-45", "-90", "-135");
             } else if (args.length == 3) {
-                return TabCompleteHandler.getPartialMatches(args[2], "0", "45", "90", "-45", "-90");
+                DisplayBase display = displayService.getDisplay(args[0]);
+                String current = display == null ? null : String.valueOf(display.getLocation().getPitch());
+                return TabCompleteHandler.getPartialMatchesWithCurrent(
+                        args[2], current, "0", "45", "90", "-45", "-90");
             }
             return null;
         };

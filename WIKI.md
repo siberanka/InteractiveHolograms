@@ -51,6 +51,11 @@ Core commands:
 | `/ih holograms enable\|disable <name>` | Change rendering state |
 | `/ih holograms display-range <name> <blocks>` | Change visibility distance |
 | `/ih holograms update-interval <name> <ticks>` | Change content update frequency |
+| `/ih holograms addline <name> <text>` | Append a text line |
+| `/ih holograms insertline <name> <index> <text>` | Insert a text line |
+| `/ih holograms removeline <name> <index>` | Remove a text line |
+| `/ih holograms setline <name> <index> <text>` | Replace a text line |
+| `/ih holograms swap-lines <name> <first> <second>` | Swap two text lines |
 | `/ih holograms attribute <name> <attribute> [value]` | Read or edit a display attribute |
 | `/ih holograms list-attributes <name>` | List valid attributes for that type |
 | `/ih holograms reset-attribute <name> <attribute>` | Restore an attribute default |
@@ -61,6 +66,8 @@ Core commands:
 | `/ih holograms model <name> <provider> [model] [animation]` | Select an installed model/mob; arguments tab-complete dynamically |
 
 Frequently used attributes include `billboard`, `scale`, `translation`, `yaw`, `pitch`, `brightness`, `shadow-radius`, `shadow-strength`, `glow-color`, `alignment`, `text-shadow`, `see-through`, `background-color`, `line-width`, `text-opacity`, `display-type`, `enchanted`, `leather-color` and `skull-texture`. Run `list-attributes` because applicable attributes depend on hologram type and server capability.
+
+Editing commands are state-aware. For example, after `/ih hologram setline welcome 2 `, tab completion offers line 2's complete current content as one suggestion, preserving spaces, MiniMessage tags and placeholders. The same current-value-first behavior applies to attributes, visibility settings, permissions, persistence, range, update interval, facing, item/block material and model selections. Suggestions are de-duplicated and unsafe control characters or pathological lengths are never sent to clients.
 
 Examples:
 

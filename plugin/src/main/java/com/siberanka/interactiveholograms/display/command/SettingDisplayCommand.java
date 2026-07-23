@@ -83,8 +83,23 @@ final class SettingDisplayCommand extends DecentCommand {
         return (sender, args) -> {
             if (args.length == 1) return TabCompleteHandler.getPartialMatches(args[0], displayService.getRegisteredDisplayNames());
             if (args.length == 2) return TabCompleteHandler.getPartialMatches(args[1], "visibility", "permission", "persistent");
-            if (args.length == 3 && "visibility".equalsIgnoreCase(args[1])) return TabCompleteHandler.getPartialMatches(args[2], "ALL", "MANUAL", "PERMISSION_REQUIRED");
-            if (args.length == 3 && "persistent".equalsIgnoreCase(args[1])) return TabCompleteHandler.getPartialMatches(args[2], "true", "false");
+            if (args.length == 3) {
+                DisplayBase display = displayService.getDisplay(args[0]);
+                if (display == null) return null;
+                DisplaySettings settings = display.getSettings();
+                if ("visibility".equalsIgnoreCase(args[1])) {
+                    return TabCompleteHandler.getPartialMatchesWithCurrent(args[2],
+                            settings.getVisibility().name(), "ALL", "MANUAL", "PERMISSION_REQUIRED");
+                }
+                if ("permission".equalsIgnoreCase(args[1])) {
+                    String current = settings.getPermission() == null ? "none" : settings.getPermission();
+                    return TabCompleteHandler.getPartialMatchesWithCurrent(args[2], current, "none");
+                }
+                if ("persistent".equalsIgnoreCase(args[1])) {
+                    return TabCompleteHandler.getPartialMatchesWithCurrent(args[2],
+                            String.valueOf(settings.isPersistent()), "true", "false");
+                }
+            }
             return null;
         };
     }

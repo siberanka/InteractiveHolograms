@@ -13,12 +13,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @FunctionalInterface
 public interface TabCompleteHandler {
+
+	int MAX_SUGGESTION_LENGTH = 4096;
 
 	InteractiveHolograms PLUGIN = InteractiveHologramsAPI.get();
 
@@ -141,6 +144,48 @@ public interface TabCompleteHandler {
 		}
 		
 		return matches;
+	}
+
+	/**
+	 * Return partial matches with the currently configured value first.
+	 *
+	 * <p>Suggestions are de-duplicated and bounded before being sent to a client.
+	 * Control characters are rejected because they can corrupt a command line or
+	 * produce malformed tab-completion packets.</p>
+	 *
+	 * @param token current command token
+	 * @param currentValue currently configured value, or {@code null}
+	 * @param alternatives other valid values
+	 * @return safe, ordered partial matches
+	 */
+	static List<String> getPartialMatchesWithCurrent(String token, String currentValue,
+													 Collection<String> alternatives) {
+		LinkedHashSet<String> values = new LinkedHashSet<>();
+		addSafeSuggestion(values, currentValue);
+		if (alternatives != null) {
+			for (String alternative : alternatives) {
+				addSafeSuggestion(values, alternative);
+			}
+		}
+		return getPartialMatches(token, values);
+	}
+
+	static List<String> getPartialMatchesWithCurrent(String token, String currentValue,
+													 String... alternatives) {
+		return getPartialMatchesWithCurrent(token, currentValue,
+				alternatives == null ? Collections.emptyList() : Arrays.asList(alternatives));
+	}
+
+	static void addSafeSuggestion(Collection<String> suggestions, String value) {
+		if (value == null || value.isEmpty() || value.length() > MAX_SUGGESTION_LENGTH) {
+			return;
+		}
+		for (int i = 0; i < value.length(); i++) {
+			if (Character.isISOControl(value.charAt(i))) {
+				return;
+			}
+		}
+		suggestions.add(value);
 	}
 
 	/**

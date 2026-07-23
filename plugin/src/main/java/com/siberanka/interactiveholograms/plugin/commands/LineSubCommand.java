@@ -488,6 +488,9 @@ public class LineSubCommand extends DecentCommand {
 			return (sender, args) -> {
 				if (args.length <= 3) {
 					return handleCommonArgs(args);
+				} else if (args.length == 4) {
+					return getCurrentLineContent(args[0], args[1], args[2], args[3],
+							getContent(Arrays.copyOfRange(args, 3, args.length)));
 				} else {
 					return getContent(Arrays.copyOfRange(args, 3, args.length));
 				}
@@ -693,6 +696,9 @@ public class LineSubCommand extends DecentCommand {
 			return (sender, args) -> {
 				if (args.length <= 3) {
 					return handleCommonArgs(args);
+				} else if (args.length == 4) {
+					return getCurrentLineContent(args[0], args[1], args[2], args[3],
+							getContent(Arrays.copyOfRange(args, 3, args.length)));
 				} else {
 					return getContent(Arrays.copyOfRange(args, 3, args.length));
 				}
@@ -851,6 +857,27 @@ public class LineSubCommand extends DecentCommand {
 			}
 		}
 		return Collections.emptyList();
+	}
+
+	protected static List<String> getCurrentLineContent(String hologramName, String pageValue,
+													 String lineValue, String token,
+													 List<String> alternatives) {
+		Hologram hologram = PLUGIN.getHologramManager().getHologram(hologramName);
+		if (hologram == null) {
+			return Collections.emptyList();
+		}
+		int pageIndex;
+		int lineIndex;
+		try {
+			pageIndex = Integer.parseInt(pageValue) - 1;
+			lineIndex = Integer.parseInt(lineValue) - 1;
+		} catch (NumberFormatException ignored) {
+			return Collections.emptyList();
+		}
+		HologramPage page = hologram.getPage(pageIndex);
+		HologramLine line = page == null ? null : page.getLine(lineIndex);
+		return TabCompleteHandler.getPartialMatchesWithCurrent(
+				token, line == null ? null : line.getContent(), alternatives);
 	}
 	
 	protected static List<String> getPages(String hologramName, String token) {

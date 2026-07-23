@@ -74,14 +74,31 @@ final class ModelDisplayCommand extends DecentCommand {
     public TabCompleteHandler getTabCompleteHandler() {
         return (sender, args) -> {
             if (args.length == 1) return TabCompleteHandler.getPartialMatches(args[0], displays.getRegisteredDisplayNames());
-            if (args.length == 2) return TabCompleteHandler.getPartialMatches(args[1], catalog.providers());
+            DisplayBase display = displays.getDisplay(args[0]);
+            if (args.length == 2) {
+                return TabCompleteHandler.getPartialMatchesWithCurrent(
+                        args[1], display == null ? null : display.getModelProvider(), catalog.providers());
+            }
             ModelProvider provider = ModelProvider.parse(args[1]);
-            if (args.length == 3) return TabCompleteHandler.getPartialMatches(args[2], catalog.models(provider));
+            if (provider == null || provider == ModelProvider.NONE) {
+                return java.util.Collections.emptyList();
+            }
+            boolean currentProvider = display != null && display.getModelProvider() != null
+                    && display.getModelProvider().equalsIgnoreCase(provider.name());
+            if (args.length == 3) {
+                return TabCompleteHandler.getPartialMatchesWithCurrent(
+                        args[2], currentProvider ? display.getModel() : null, catalog.models(provider));
+            }
             if (args.length == 4) {
                 Collection<String> animations = catalog.animations(provider, args[2]);
                 java.util.List<String> options = new java.util.ArrayList<>(animations);
                 options.add("none");
-                return TabCompleteHandler.getPartialMatches(args[3], options);
+                boolean currentModel = currentProvider && display.getModel() != null
+                        && display.getModel().equalsIgnoreCase(args[2]);
+                String current = currentModel
+                        ? (display.getAnimation() == null ? "none" : display.getAnimation())
+                        : null;
+                return TabCompleteHandler.getPartialMatchesWithCurrent(args[3], current, options);
             }
             return null;
         };

@@ -75,8 +75,10 @@ class TextDisplaySwapLineCommand extends DecentCommand {
         return (sender, args) -> {
             if (args.length == 1) {
                 return tabCompleteHelper.getDisplayNames(args[0]);
-            } else if (args.length == 2 || args.length == 3) {
+            } else if (args.length == 2) {
                 return tabCompleteHelper.getLineIndexes(args[0], args[1]);
+            } else if (args.length == 3) {
+                return tabCompleteHelper.getLineIndexes(args[0], args[2]);
             }
             return null;
         };

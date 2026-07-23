@@ -76,7 +76,10 @@ class BlockDisplaySetBlockCommand extends DecentCommand {
             if (args.length == 1) {
                 return TabCompleteHandler.getPartialMatches(args[0], displayService.getRegisteredDisplayNames());
             } else if (args.length == 2) {
-                return TabCompleteHandler.getPartialMatches(args[1], materialService.getBlockMaterialNames());
+                DisplayBase display = displayService.getDisplay(args[0]);
+                String current = display instanceof BlockDisplay ? ((BlockDisplay) display).getMaterial() : null;
+                return TabCompleteHandler.getPartialMatchesWithCurrent(
+                        args[1], current, materialService.getBlockMaterialNames());
             }
             return null;
         };

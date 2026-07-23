@@ -104,6 +104,10 @@ class AttributeDisplayCommand extends DecentCommand {
                 }
                 String[] valueArguments = Arrays.copyOfRange(args, 2, args.length);
                 List<String> hints = attributeCommandService.getHints(attribute, sender, valueArguments);
+                if (args.length == 3) {
+                    String currentValue = attributeCommandService.getAttribute(display, attribute);
+                    return TabCompleteHandler.getPartialMatchesWithCurrent(args[2], currentValue, hints);
+                }
                 return TabCompleteHandler.getPartialMatches(args[args.length - 1], hints);
             }
             return null;
