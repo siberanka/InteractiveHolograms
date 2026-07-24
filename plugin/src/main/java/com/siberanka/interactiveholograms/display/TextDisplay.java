@@ -156,14 +156,39 @@ public class TextDisplay extends DisplayBase {
         viewerPages.keySet().retainAll(onlineViewers);
     }
 
+    private volatile TextLayoutMetrics cachedMetrics;
+
+    public TextLayoutMetrics getMetrics() {
+        long currentRevision = getLayoutRevision();
+        TextLayoutMetrics metrics = cachedMetrics;
+        if (metrics == null || metrics.getLayoutRevision() != currentRevision) {
+            synchronized (this) {
+                metrics = cachedMetrics;
+                if (metrics == null || metrics.getLayoutRevision() != currentRevision) {
+                    double maxHeight = pages.stream().mapToDouble(page -> page.getLines().stream()
+                            .mapToDouble(TextDisplayLine::getHeight).sum()).max().orElse(TextDisplayLine.DEFAULT_HEIGHT);
+                    int maxLength = pages.stream().flatMap(page -> page.getLines().stream())
+                            .mapToInt(line -> TextLayoutScanner.visibleLength(line.getContent())).max().orElse(1);
+                    boolean actionsPresent = super.hasActions() || pages.stream().anyMatch(TextDisplayPage::hasActions);
+                    boolean placeholdersPresent = pages.stream().flatMap(page -> page.getLines().stream())
+                            .anyMatch(line -> line.getContent() != null && line.getContent().contains("%"));
+                    boolean animationsPresent = pages.stream().flatMap(page -> page.getLines().stream())
+                            .anyMatch(line -> line.getContent() != null && line.getContent().contains("<anim:"));
+
+                    metrics = new TextLayoutMetrics(maxHeight, maxLength, actionsPresent, placeholdersPresent, animationsPresent, currentRevision);
+                    cachedMetrics = metrics;
+                }
+            }
+        }
+        return metrics;
+    }
+
     public synchronized double getMaximumPageHeight() {
-        return pages.stream().mapToDouble(page -> page.getLines().stream()
-                .mapToDouble(TextDisplayLine::getHeight).sum()).max().orElse(TextDisplayLine.DEFAULT_HEIGHT);
+        return getMetrics().getMaximumPageHeight();
     }
 
     public synchronized int getMaximumVisibleLineLength() {
-        return pages.stream().flatMap(page -> page.getLines().stream())
-                .mapToInt(line -> visibleLength(line.getContent())).max().orElse(1);
+        return getMetrics().getMaximumVisibleLineLength();
     }
 
     private synchronized TextDisplayPage getPage(UUID viewerId) {
@@ -174,12 +199,7 @@ public class TextDisplay extends DisplayBase {
         return pages.get(0).mutableLines();
     }
 
-    private int visibleLength(String content) {
-        String stripped = content == null ? "" : content
-                .replaceAll("(?i)[&§][0-9A-FK-OR]", "")
-                .replaceAll("(?i)[&§]#[0-9A-F]{6}", "")
-                .replaceAll("<[^>]{1,256}>", "")
-                .replaceAll("%[^%\\r\\n]{1,128}%", "MMMMMMMMMMMMMMMM");
-        return stripped.codePointCount(0, stripped.length());
+    public static int visibleLength(String content) {
+        return TextLayoutScanner.visibleLength(content);
     }
 }
