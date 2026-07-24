@@ -85,6 +85,15 @@ public final class InteractiveHolograms {
             this.displayModule = new DisplayModule(plugin, animationManager, platformAdapter);
             this.displayModule.initialize();
             nmsPacketListener.setDisplayInteractionService(this.displayModule.getInteractionService());
+
+            if (plugin instanceof com.siberanka.interactiveholograms.plugin.InteractiveHologramsPlugin) {
+                com.siberanka.interactiveholograms.packet.PacketRuntime runtime =
+                        ((com.siberanka.interactiveholograms.plugin.InteractiveHologramsPlugin) plugin).getPacketRuntime();
+                if (runtime != null && runtime.getBackend() != null) {
+                    runtime.getBackend().registerListener(
+                            new com.siberanka.interactiveholograms.packet.PacketInteractionListener(this.displayModule.getInteractionService()));
+                }
+            }
         } else {
             // Legacy protocol versions do not have display entities. They keep
             // using the packet-only armor-stand renderer and Decent YAML model.

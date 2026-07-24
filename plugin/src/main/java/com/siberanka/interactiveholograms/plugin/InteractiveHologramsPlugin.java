@@ -7,6 +7,7 @@ import com.siberanka.interactiveholograms.api.commands.DecentCommand;
 import com.siberanka.interactiveholograms.api.utils.reflect.Version;
 import com.siberanka.interactiveholograms.display.DisplayModule;
 import com.siberanka.interactiveholograms.hook.NbtApiHook;
+import com.siberanka.interactiveholograms.packet.PacketRuntime;
 import com.siberanka.interactiveholograms.plugin.commands.HologramsCommand;
 import com.siberanka.interactiveholograms.plugin.features.DamageDisplayFeature;
 import com.siberanka.interactiveholograms.plugin.features.HealingDisplayFeature;
@@ -15,6 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class InteractiveHologramsPlugin extends JavaPlugin {
 
+    private PacketRuntime packetRuntime;
     private boolean unsupportedServerVersion = false;
 
     @Override
@@ -24,6 +26,8 @@ public class InteractiveHologramsPlugin extends JavaPlugin {
             return;
         }
 
+        packetRuntime = new PacketRuntime(this);
+        packetRuntime.onLoad();
         InteractiveHologramsAPI.onLoad(this);
     }
 
@@ -36,6 +40,9 @@ public class InteractiveHologramsPlugin extends JavaPlugin {
             return;
         }
 
+        if (packetRuntime != null) {
+            packetRuntime.onEnable();
+        }
         InteractiveHologramsAPI.onEnable();
 
         InteractiveHolograms interactiveHolograms = InteractiveHologramsAPI.get();
@@ -61,6 +68,13 @@ public class InteractiveHologramsPlugin extends JavaPlugin {
         }
 
         InteractiveHologramsAPI.onDisable();
+        if (packetRuntime != null) {
+            packetRuntime.onDisable();
+        }
+    }
+
+    public PacketRuntime getPacketRuntime() {
+        return packetRuntime;
     }
 
 }
