@@ -27,11 +27,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Owns client-side hitboxes for modern packet holograms. */
 public final class DisplayInteractionService {
 
     private static final double MAX_INTERACTION_DISTANCE_SQUARED = 64.0d;
+    private static final int MAX_CLICKS_PER_SECOND = 20;
 
     private final JavaPlugin plugin;
     private final DisplayService displayService;
@@ -40,6 +42,8 @@ public final class DisplayInteractionService {
     private final Map<String, HitboxHandle> hitboxes = new ConcurrentHashMap<>();
     private final Map<Integer, HitboxHandle> hitboxesByEntityId = new ConcurrentHashMap<>();
     private final Map<UUID, Long> clickCooldowns = new ConcurrentHashMap<>();
+    private final Map<UUID, AtomicInteger> clickRateLimiters = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> clickRateTimestamps = new ConcurrentHashMap<>();
     private BukkitTask task;
 
     public DisplayInteractionService(JavaPlugin plugin,
@@ -69,14 +73,44 @@ public final class DisplayInteractionService {
         hitboxes.clear();
         hitboxesByEntityId.clear();
         clickCooldowns.clear();
+        clickRateLimiters.clear();
+        clickRateTimestamps.clear();
     }
 
-    /** Fast Netty-thread lookup; execution itself is always scheduled safely. */
+    public void onPlayerQuit(UUID playerId) {
+        if (playerId != null) {
+            clickCooldowns.remove(playerId);
+            clickRateLimiters.remove(playerId);
+            clickRateTimestamps.remove(playerId);
+            for (HitboxHandle handle : hitboxes.values()) {
+                handle.removeViewer(playerId);
+            }
+        }
+    }
+
+    /** Fast Netty-thread lookup; rate-limited before scheduling tasks on main thread. */
     public boolean acceptClick(Player player, int entityId, ClickType clickType) {
         HitboxHandle matched = hitboxesByEntityId.get(entityId);
         if (matched == null || !matched.viewers.contains(player.getUniqueId())) {
             return false;
         }
+
+        UUID playerId = player.getUniqueId();
+        long now = System.currentTimeMillis();
+
+        // Netty thread rate limiting
+        Long lastTime = clickRateTimestamps.putIfAbsent(playerId, now);
+        AtomicInteger tokens = clickRateLimiters.computeIfAbsent(playerId, k -> new AtomicInteger(MAX_CLICKS_PER_SECOND));
+
+        if (lastTime != null && now - lastTime >= 1000L) {
+            tokens.set(MAX_CLICKS_PER_SECOND);
+            clickRateTimestamps.put(playerId, now);
+        }
+
+        if (tokens.decrementAndGet() < 0) {
+            return true; // Suppress packet processing without task scheduling
+        }
+
         String displayName = matched.displayName;
         Bukkit.getScheduler().runTask(plugin, () -> executeValidated(player, displayName, clickType));
         return true;
@@ -85,23 +119,25 @@ public final class DisplayInteractionService {
     private void synchronize() {
         Collection<DisplayBase> displays = displayService.getRegisteredDisplays();
         Set<String> liveNames = ConcurrentHashMap.newKeySet();
+
         for (DisplayBase display : displays) {
             if (!requiresPacketHitbox(display)) {
                 removeHitbox(display.getName());
                 continue;
             }
             liveNames.add(display.getName());
-            HitboxHandle handle = hitboxes.computeIfAbsent(display.getName(), name ->
-                    new HitboxHandle(name));
-            handle.ensureRendererCount(HitboxLayout.forDisplay(display).size());
-            synchronizeViewers(display, handle);
+            HitboxHandle handle = hitboxes.computeIfAbsent(display.getName(), HitboxHandle::new);
+
+            HitboxLayout layout = handle.getOrBuildLayout(display);
+            handle.ensureRendererCount(layout.size());
+            synchronizeViewers(display, handle, layout);
         }
+
         for (String name : new ArrayList<>(hitboxes.keySet())) {
             if (!liveNames.contains(name)) {
                 removeHitbox(name);
             }
         }
-        clickCooldowns.keySet().removeIf(uuid -> Bukkit.getPlayer(uuid) == null);
     }
 
     /** Click hitboxes depend on actions, not the visual kind (text/item/block/model/mob). */
@@ -109,30 +145,34 @@ public final class DisplayInteractionService {
         return display != null && display.hasActions() && display.getSettings().isEnabled();
     }
 
-    private void synchronizeViewers(DisplayBase display, HitboxHandle handle) {
-        HitboxLayout layout = HitboxLayout.forDisplay(display);
-        Set<UUID> online = ConcurrentHashMap.newKeySet();
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            UUID playerId = player.getUniqueId();
-            online.add(playerId);
-            boolean visible = visibilityService.shouldBeShownToPlayer(display, new BukkitPlayer(player));
-            List<DecentPosition> positions = layout.positions(display.getLocation(), player);
-            if (visible && handle.viewers.add(playerId)) {
-                handle.display(player, positions);
-            } else if (!visible && handle.viewers.remove(playerId)) {
-                handle.hide(player);
-            } else if (visible) {
-                handle.move(player, positions);
+    private void synchronizeViewers(DisplayBase display, HitboxHandle handle, HitboxLayout layout) {
+        Set<UUID> visibleViewers = visibilityService.getVisibleViewers(display);
+
+        for (UUID playerId : visibleViewers) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+            boolean newlyAdded = handle.viewers.add(playerId);
+            int bucket = layout.getOrientationBucket(display.getLocation(), player);
+
+            if (newlyAdded) {
+                List<DecentPosition> positions = layout.positions(display.getLocation(), bucket);
+                handle.display(player, positions, bucket);
+            } else if (handle.shouldUpdateMove(playerId, bucket)) {
+                List<DecentPosition> positions = layout.positions(display.getLocation(), bucket);
+                handle.move(player, positions, bucket);
             }
         }
+
         for (UUID viewer : new ArrayList<>(handle.viewers)) {
-            if (!online.contains(viewer)) {
-                handle.viewers.remove(viewer);
-                handle.lastPositions.remove(viewer);
+            if (!visibleViewers.contains(viewer) || Bukkit.getPlayer(viewer) == null) {
+                handle.removeViewer(viewer);
             }
         }
+
         if (display instanceof TextDisplay) {
-            ((TextDisplay) display).retainViewerPages(online);
+            ((TextDisplay) display).retainViewerPages(visibleViewers);
         }
     }
 
@@ -239,9 +279,28 @@ public final class DisplayInteractionService {
         private final List<NmsClickableHologramRenderer> renderers = new ArrayList<>();
         private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
         private final Map<UUID, List<DecentPosition>> lastPositions = new ConcurrentHashMap<>();
+        private final Map<UUID, Integer> lastBuckets = new ConcurrentHashMap<>();
+        private volatile HitboxLayout cachedLayout;
+        private volatile long cachedLayoutRevision = -1;
 
         private HitboxHandle(String displayName) {
             this.displayName = displayName;
+        }
+
+        private HitboxLayout getOrBuildLayout(DisplayBase display) {
+            long currentRev = display.getLayoutRevision();
+            HitboxLayout layout = cachedLayout;
+            if (layout == null || cachedLayoutRevision != currentRev) {
+                layout = HitboxLayout.forDisplay(display);
+                cachedLayout = layout;
+                cachedLayoutRevision = currentRev;
+            }
+            return layout;
+        }
+
+        private boolean shouldUpdateMove(UUID viewerId, int currentBucket) {
+            Integer previousBucket = lastBuckets.get(viewerId);
+            return previousBucket == null || previousBucket != currentBucket;
         }
 
         private void ensureRendererCount(int count) {
@@ -262,14 +321,15 @@ public final class DisplayInteractionService {
             renderers.forEach(renderer -> hitboxesByEntityId.remove(renderer.getEntityId(), this));
         }
 
-        private void display(Player player, List<DecentPosition> positions) {
+        private void display(Player player, List<DecentPosition> positions, int bucket) {
             for (int index = 0; index < renderers.size(); index++) {
                 renderers.get(index).display(player, positions.get(index));
             }
             lastPositions.put(player.getUniqueId(), positions);
+            lastBuckets.put(player.getUniqueId(), bucket);
         }
 
-        private void move(Player player, List<DecentPosition> positions) {
+        private void move(Player player, List<DecentPosition> positions, int bucket) {
             List<DecentPosition> previous = lastPositions.getOrDefault(
                     player.getUniqueId(), Collections.emptyList());
             for (int index = 0; index < renderers.size(); index++) {
@@ -279,22 +339,27 @@ public final class DisplayInteractionService {
                 }
             }
             lastPositions.put(player.getUniqueId(), positions);
+            lastBuckets.put(player.getUniqueId(), bucket);
         }
 
-        private void hide(Player player) {
-            renderers.forEach(renderer -> renderer.hide(player));
-            lastPositions.remove(player.getUniqueId());
+        private void removeViewer(UUID viewerId) {
+            if (viewers.remove(viewerId)) {
+                Player player = Bukkit.getPlayer(viewerId);
+                if (player != null) {
+                    renderers.forEach(renderer -> renderer.hide(player));
+                }
+                lastPositions.remove(viewerId);
+                lastBuckets.remove(viewerId);
+            }
         }
 
         private void hideAll() {
             for (UUID viewer : new ArrayList<>(viewers)) {
-                Player player = Bukkit.getPlayer(viewer);
-                if (player != null) {
-                    hide(player);
-                }
+                removeViewer(viewer);
             }
             viewers.clear();
             lastPositions.clear();
+            lastBuckets.clear();
         }
     }
 
@@ -303,7 +368,20 @@ public final class DisplayInteractionService {
         private static final double ARMOR_STAND_HEIGHT = 1.9d;
         private static final double ARMOR_STAND_CENTER_Y = 0.9875d;
         private static final double ORIENTATION_STEP = Math.PI / 12.0d;
+        private static final int BUCKET_COUNT = 24;
         private static final int MAX_PACKET_ENTITIES = 64;
+
+        private static final double[] SIN_LOOKUP = new double[BUCKET_COUNT];
+        private static final double[] COS_LOOKUP = new double[BUCKET_COUNT];
+
+        static {
+            for (int i = 0; i < BUCKET_COUNT; i++) {
+                double angle = i * ORIENTATION_STEP;
+                SIN_LOOKUP[i] = Math.sin(angle);
+                COS_LOOKUP[i] = Math.cos(angle);
+            }
+        }
+
         private final double width;
         private final double height;
         private final int columns;
@@ -336,23 +414,19 @@ public final class DisplayInteractionService {
             return columns * rows;
         }
 
-        double getWidth() {
-            return width;
-        }
-
-        double getHeight() {
-            return height;
-        }
-
-        List<DecentPosition> positions(DecentLocation location, Player viewer) {
+        int getOrientationBucket(DecentLocation location, Player viewer) {
             org.bukkit.Location viewerLocation = viewer.getLocation();
             double dx = viewerLocation.getX() - location.getX();
             double dz = viewerLocation.getZ() - location.getZ();
             double length = Math.sqrt(dx * dx + dz * dz);
             double angle = length < 0.001d ? Math.PI / 2.0d : Math.atan2(dz, dx);
-            double quantizedAngle = Math.rint(angle / ORIENTATION_STEP) * ORIENTATION_STEP;
-            double rightX = Math.sin(quantizedAngle);
-            double rightZ = -Math.cos(quantizedAngle);
+            int bucket = (int) Math.round(angle / ORIENTATION_STEP);
+            return (bucket % BUCKET_COUNT + BUCKET_COUNT) % BUCKET_COUNT;
+        }
+
+        List<DecentPosition> positions(DecentLocation location, int bucket) {
+            double rightX = SIN_LOOKUP[bucket];
+            double rightZ = -COS_LOOKUP[bucket];
             List<DecentPosition> positions = new ArrayList<>(size());
             double columnSpacing = width / columns;
             double rowSpacing = height / rows;
