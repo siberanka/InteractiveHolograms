@@ -3,6 +3,7 @@ subprojects {
     apply plugin: "maven-publish"
 
     group = 'com.siberanka.interactiveholograms'
+    version = '3.4.1'
 
     repositories {
         mavenCentral()
