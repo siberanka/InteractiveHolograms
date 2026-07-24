@@ -1,39 +1,20 @@
-/*
- * This file is part of InteractiveHolograms, licensed under the GNU GPL v3.0 License.
- * Copyright (C) DecentSoftware.eu
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package com.siberanka.interactiveholograms.display;
 
 import com.siberanka.interactiveholograms.display.render.DisplayRenderCoordinator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.Collection;
 
 /**
- * Manages scheduled tasks for display updates.
- *
- * @author d0by
- * @since 2.10.0
+ * Manages scheduled tasks for display updates with work budget enforcement.
  */
 public class DisplayUpdateScheduler {
 
     private static final long LOGICAL_STATE_BASE_INTERVAL_MS = 50;
     private static final long VISIBILITY_BASE_INTERVAL_MS = 1000;
     private static final long POST_PROCESSING_BASE_INTERVAL_MS = 50;
+    private static final int MAX_WORK_ITEMS_PER_TICK = 5000;
 
     private long lastLogicalStateTick = 0;
     private long lastVisibilityTick = 0;
@@ -50,18 +31,12 @@ public class DisplayUpdateScheduler {
         this.renderCoordinator = renderCoordinator;
     }
 
-    /**
-     * Starts all scheduled tasks.
-     */
     public void start() {
         if (task == null) {
             task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::updateDisplays, 1L, 1L);
         }
     }
 
-    /**
-     * Stops all scheduled tasks and shuts down executors.
-     */
     public void shutdown() {
         if (task != null) {
             task.cancel();
@@ -89,23 +64,41 @@ public class DisplayUpdateScheduler {
     }
 
     private void tickLogicalStates(long currentTime) {
-        for (DisplayBase display : displayService.getRegisteredDisplays()) {
+        int processed = 0;
+        Collection<DisplayBase> registered = displayService.getRegisteredDisplays();
+        for (DisplayBase display : registered) {
             if (shouldUpdateLogicalState(display, currentTime)) {
                 renderCoordinator.update(display);
                 display.setLastLogicalUpdateMs(System.currentTimeMillis());
+                processed++;
+                if (processed >= MAX_WORK_ITEMS_PER_TICK) {
+                    break;
+                }
             }
         }
     }
 
     private void tickVisibility() {
-        for (DisplayBase display : displayService.getRegisteredDisplays()) {
+        int processed = 0;
+        Collection<DisplayBase> registered = displayService.getRegisteredDisplays();
+        for (DisplayBase display : registered) {
             renderCoordinator.updateVisibility(display);
+            processed++;
+            if (processed >= MAX_WORK_ITEMS_PER_TICK) {
+                break;
+            }
         }
     }
 
     private void tickPostProcessing() {
-        for (DisplayBase display : displayService.getRegisteredDisplays()) {
+        int processed = 0;
+        Collection<DisplayBase> registered = displayService.getRegisteredDisplays();
+        for (DisplayBase display : registered) {
             renderCoordinator.postProcess(display);
+            processed++;
+            if (processed >= MAX_WORK_ITEMS_PER_TICK) {
+                break;
+            }
         }
     }
 
@@ -123,5 +116,4 @@ public class DisplayUpdateScheduler {
     private long ticksToMs(long intervalInTicks) {
         return intervalInTicks * 50L;
     }
-
 }
