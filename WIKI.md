@@ -16,19 +16,20 @@ This document covers InteractiveHolograms 3.x. It is the canonical reference for
 
 ## Requirements and installation
 
-Use a Bukkit-compatible server version supported by the packaged NMS modules. Display entities require Minecraft 1.19.4 or newer; older servers use the legacy packet renderer and its compatible command set. Java 21 is recommended for current Paper releases and is required to build the complete project.
+Use a Bukkit-compatible server version supported by the packaged NMS modules. Display entities require Minecraft 1.19.4 or newer; older servers use the legacy packet renderer and its compatible command set. Packet transport and interaction packet handling are powered by PacketEvents 2.x, which automatically uses an external PacketEvents plugin if present, or falls back to an embedded relocated instance inside the InteractiveHolograms jar. Java 21 is recommended for current Paper releases and is required to build the complete project.
 
 1. Stop the server.
 2. Put `InteractiveHolograms-<version>.jar` in `plugins/`.
-3. Remove the old DecentHolograms jar when migrating; do not run both implementations together.
-4. Start the server and review the console.
-5. Use `/ih version` and `/ih holograms help`.
+3. (Optional) Install `PacketEvents` if external packet management is preferred; otherwise embedded PacketEvents mode will initialize automatically.
+4. Remove the old DecentHolograms jar when migrating; do not run both implementations together.
+5. Start the server and review the console.
+6. Use `/ih version` and `/ih holograms help`.
 
 The main aliases are `/ih`, `/holograms`, `/hologram`, `/holo` and the migration alias `/dh`.
 
 ## Packet-only architecture
 
-InteractiveHolograms does not call Bukkit world spawn methods for persistent holograms. Each viewer receives spawn, metadata, move and destroy packets based on world, distance and visibility rules. A clickable hologram receives a virtual hitbox entity ID automatically. Incoming interaction packets are matched quickly, then permission, world, distance and cooldown checks and all actions run on the main server thread.
+InteractiveHolograms does not call Bukkit world spawn methods for persistent holograms. Each viewer receives spawn, metadata, move and destroy packets via PacketEvents based on world, distance and visibility rules. A clickable hologram receives a virtual hitbox entity ID automatically. Incoming interaction packets are intercepted by PacketEvents listeners, matched quickly, then permission, world, distance and cooldown checks and all actions run on the main server thread. All command attribute modifications (including yaw, pitch, and background settings) update memory state, visual packet state, and YAML storage atomically.
 
 BetterModel integration uses its location-based `DummyTracker`. ModelEngine uses its non-Bukkit `Dummy`. MythicMobs mobs are never spawned by InteractiveHolograms; their registered IDs are resolved through an installed packet model backend.
 
