@@ -1,6 +1,8 @@
 main: "com.siberanka.interactiveholograms.plugin.InteractiveHologramsPlugin"
 api-version: 1.13
 softdepend:
+  - "packetevents"
+  - "PacketEvents"
   - "PlaceholderAPI"
   - "HeadDatabase"
   - "CraftEngine"

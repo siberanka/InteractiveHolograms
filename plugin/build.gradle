@@ -33,6 +33,7 @@ dependencies {
     implementation(libs.configurate.yaml)
     implementation(libs.adventure.minimessage)
     implementation(libs.adventure.legacy.serializer)
+    implementation(libs.packetevents.spigot)
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
@@ -69,6 +70,8 @@ shadowJar {
     relocate "de.tr7zw.changeme.nbtapi", "com.siberanka.interactiveholograms.libs.nbtapi"
     relocate "com.cryptomorin.xseries", "com.siberanka.interactiveholograms.libs.xseries"
     relocate "net.kyori", "com.siberanka.interactiveholograms.libs.adventure"
+    relocate "com.github.retrooper.packetevents", "com.siberanka.interactiveholograms.shadow.packetevents"
+    relocate "io.github.retrooper.packetevents", "com.siberanka.interactiveholograms.shadow.packetevents"
 }
 
 publishing {
