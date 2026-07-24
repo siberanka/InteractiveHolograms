@@ -1,38 +1,78 @@
 package com.siberanka.interactiveholograms.packet;
 
-import com.github.retrooper.packetevents.PacketEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+
+import java.lang.reflect.Method;
 
 public class PacketRuntime {
 
     private final Plugin plugin;
     private PacketBackend backend;
+    private PacketRuntimeState state = PacketRuntimeState.NEW;
 
     public PacketRuntime(Plugin plugin) {
         this.plugin = plugin;
     }
 
     public void onLoad() {
-        if (isExternalPacketEventsPresent()) {
-            this.backend = new ExternalPacketEventsBackend();
-            plugin.getLogger().info("Packet backend: external PacketEvents " + backend.getVersionString());
-        } else {
-            this.backend = new EmbeddedPacketEventsBackend(plugin);
-            backend.onLoad();
-            plugin.getLogger().info("Packet backend: embedded PacketEvents " + backend.getVersionString());
+        if (state != PacketRuntimeState.NEW) {
+            return;
+        }
+
+        try {
+            if (isExternalPacketEventsPresent()) {
+                this.backend = new ExternalPacketEventsBackend();
+                this.state = PacketRuntimeState.EXTERNAL_SELECTED;
+                plugin.getLogger().info("Packet backend mode: EXTERNAL (PacketEvents " + backend.getVersionString() + ")");
+            } else {
+                this.backend = new EmbeddedPacketEventsBackend(plugin);
+                backend.onLoad();
+                this.state = PacketRuntimeState.EMBEDDED_LOADED;
+                plugin.getLogger().info("Packet backend mode: EMBEDDED (PacketEvents " + backend.getVersionString() + ")");
+            }
+        } catch (Throwable t) {
+            this.state = PacketRuntimeState.FAILED;
+            plugin.getLogger().severe("Failed to load PacketEvents backend: " + t.getMessage());
         }
     }
 
     public void onEnable() {
-        if (backend != null) {
-            backend.onEnable();
+        if (state == PacketRuntimeState.FAILED || state == PacketRuntimeState.TERMINATED) {
+            plugin.getLogger().warning("PacketRuntime is in state " + state + ". Skipping enable.");
+            return;
+        }
+
+        if (state == PacketRuntimeState.INITIALIZED) {
+            return;
+        }
+
+        try {
+            if (backend != null) {
+                backend.onEnable();
+                this.state = PacketRuntimeState.INITIALIZED;
+            } else {
+                this.state = PacketRuntimeState.FAILED;
+            }
+        } catch (Throwable t) {
+            this.state = PacketRuntimeState.FAILED;
+            plugin.getLogger().severe("Failed to enable PacketEvents backend: " + t.getMessage());
         }
     }
 
     public void onDisable() {
-        if (backend != null) {
-            backend.onDisable();
+        if (state == PacketRuntimeState.TERMINATED) {
+            return;
+        }
+
+        try {
+            if (backend != null) {
+                backend.onDisable();
+            }
+        } catch (Throwable t) {
+            plugin.getLogger().warning("Error during PacketEvents backend disable: " + t.getMessage());
+        } finally {
+            this.state = PacketRuntimeState.TERMINATED;
         }
     }
 
@@ -40,14 +80,24 @@ public class PacketRuntime {
         return backend;
     }
 
-    private boolean isExternalPacketEventsPresent() {
+    public PacketRuntimeState getState() {
+        return state;
+    }
+
+    public boolean isInitialized() {
+        return state == PacketRuntimeState.INITIALIZED;
+    }
+
+    public boolean isExternalPacketEventsPresent() {
         try {
             Plugin externalPlugin = Bukkit.getPluginManager().getPlugin("packetevents");
             if (externalPlugin == null) {
                 externalPlugin = Bukkit.getPluginManager().getPlugin("PacketEvents");
             }
-            if (externalPlugin != null && externalPlugin.isEnabled()) {
-                return PacketEvents.getAPI() != null && PacketEvents.getAPI().isLoaded();
+            if (externalPlugin != null) {
+                Class<?> peClass = Class.forName("com.github.retrooper." + "packetevents.PacketEvents");
+                Method getApiMethod = peClass.getMethod("getAPI");
+                return getApiMethod.invoke(null) != null;
             }
         } catch (Throwable ignored) {
         }

@@ -12,7 +12,7 @@ adventure = "4.17.0"
 junit = "5.14.3"
 junit-platform-launcher = "1.14.3"
 mockito = "4.11.0" # Has to be 4.x for Java 8 compatibility
-packetevents = "2.7.0"
+packetevents = "2.12.1"
 # Plugins
 shadow = "9.4.2"
 
