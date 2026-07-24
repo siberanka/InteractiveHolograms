@@ -1,21 +1,3 @@
-/*
- * This file is part of InteractiveHolograms, licensed under the GNU GPL v3.0 License.
- * Copyright (C) DecentSoftware.eu
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package com.siberanka.interactiveholograms.display.render;
 
 import com.siberanka.interactiveholograms.api.utils.Log;
@@ -26,6 +8,9 @@ import com.siberanka.interactiveholograms.display.render.state.LogicalRenderStat
 import com.siberanka.interactiveholograms.platform.api.player.PlatformPlayer;
 import com.siberanka.interactiveholograms.platform.api.player.PlatformPlayerService;
 import com.siberanka.interactiveholograms.platform.api.render.RenderObjectHandle;
+
+import java.util.Set;
+import java.util.UUID;
 
 public class DisplayRenderCoordinator {
 
@@ -54,23 +39,42 @@ public class DisplayRenderCoordinator {
     }
 
     public void hideForEveryone(DisplayBase display) {
-        for (PlatformPlayer player : playerService.getOnlinePlayers()) {
-            updateLogicalState(display, player, false);
+        Set<UUID> visibleViewers = visibilityService.getVisibleViewers(display);
+        for (UUID viewerId : visibleViewers) {
+            PlatformPlayer player = playerService.getPlayer(viewerId);
+            if (player != null) {
+                updateLogicalState(display, player, false);
+            }
         }
     }
 
     public void updateVisibility(DisplayBase display) {
+        // Fast spatial query for candidates + existing visible viewers
+        Set<UUID> visibleViewers = visibilityService.getVisibleViewers(display);
+        for (UUID viewerId : visibleViewers) {
+            PlatformPlayer player = playerService.getPlayer(viewerId);
+            if (player != null) {
+                updateVisibility(display, player);
+            }
+        }
+
+        // Also check online players for candidates
         for (PlatformPlayer player : playerService.getOnlinePlayers()) {
-            updateVisibility(display, player);
+            if (!visibleViewers.contains(player.getUniqueId())) {
+                updateVisibility(display, player);
+            }
         }
     }
 
     public void updateVisibility(DisplayBase display, PlatformPlayer player) {
         boolean shouldBeShownToPlayer = visibilityService.shouldBeShownToPlayer(display, player);
         boolean isShownToPlayer = isIsShownToPlayer(display, player);
+
         if (shouldBeShownToPlayer && !isShownToPlayer) {
+            visibilityService.getViewerIndex().addVisible(player.getUniqueId(), display.getName());
             updateLogicalState(display, player, true);
         } else if (!shouldBeShownToPlayer && isShownToPlayer) {
+            visibilityService.getViewerIndex().removeVisible(player.getUniqueId(), display.getName());
             updateLogicalState(display, player, false);
         }
     }
@@ -80,8 +84,10 @@ public class DisplayRenderCoordinator {
     }
 
     public void update(DisplayBase display) {
-        for (PlatformPlayer player : playerService.getOnlinePlayers()) {
-            if (isIsShownToPlayer(display, player)) {
+        Set<UUID> visibleViewers = visibilityService.getVisibleViewers(display);
+        for (UUID viewerId : visibleViewers) {
+            PlatformPlayer player = playerService.getPlayer(viewerId);
+            if (player != null && isIsShownToPlayer(display, player)) {
                 updateLogicalState(display, player, true);
             }
         }
@@ -102,8 +108,12 @@ public class DisplayRenderCoordinator {
     }
 
     public void postProcess(DisplayBase display) {
-        for (PlatformPlayer player : playerService.getOnlinePlayers()) {
-            renderLogicalState(display, player);
+        Set<UUID> visibleViewers = visibilityService.getVisibleViewers(display);
+        for (UUID viewerId : visibleViewers) {
+            PlatformPlayer player = playerService.getPlayer(viewerId);
+            if (player != null) {
+                renderLogicalState(display, player);
+            }
         }
     }
 

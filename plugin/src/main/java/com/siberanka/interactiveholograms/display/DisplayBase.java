@@ -51,6 +51,11 @@ public abstract class DisplayBase {
     private String animation;
 
     private final AtomicLong lastLogicalUpdateMs = new AtomicLong(0);
+    private final AtomicLong contentRevision = new AtomicLong(1);
+    private final AtomicLong configRevision = new AtomicLong(1);
+    private final AtomicLong transformRevision = new AtomicLong(1);
+    private final AtomicLong layoutRevision = new AtomicLong(1);
+    private final AtomicLong actionRevision = new AtomicLong(1);
     private volatile boolean configDirty = true;
     private volatile boolean contentDirty = true;
 
@@ -79,6 +84,7 @@ public abstract class DisplayBase {
 
     public void setLocation(DecentLocation location) {
         this.location = location;
+        markTransformDirty();
         markConfigDirty();
     }
 
@@ -88,6 +94,7 @@ public abstract class DisplayBase {
 
     public void setSettings(DisplaySettings settings) {
         this.settings = settings;
+        markConfigDirty();
     }
 
     public <T> void setAttribute(AttributeKey<T> key, DisplayAttribute<T> attribute) {
@@ -123,6 +130,7 @@ public abstract class DisplayBase {
         if (values != null) {
             values.forEach((type, entries) -> actions.put(type, new ArrayList<>(entries)));
         }
+        markActionDirty();
         markConfigDirty();
     }
 
@@ -170,12 +178,31 @@ public abstract class DisplayBase {
         this.lastLogicalUpdateMs.set(lastLogicalUpdateMs);
     }
 
+    public long getContentRevision() { return contentRevision.get(); }
+    public long getConfigRevision() { return configRevision.get(); }
+    public long getTransformRevision() { return transformRevision.get(); }
+    public long getLayoutRevision() { return layoutRevision.get(); }
+    public long getActionRevision() { return actionRevision.get(); }
+
     protected void markContentDirty() {
         contentDirty = true;
+        contentRevision.incrementAndGet();
+        layoutRevision.incrementAndGet();
     }
 
     protected void markConfigDirty() {
         configDirty = true;
+        configRevision.incrementAndGet();
+        layoutRevision.incrementAndGet();
+    }
+
+    protected void markTransformDirty() {
+        transformRevision.incrementAndGet();
+    }
+
+    protected void markActionDirty() {
+        actionRevision.incrementAndGet();
+        layoutRevision.incrementAndGet();
     }
 
     public boolean checkContentDirty() {
