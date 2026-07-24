@@ -63,8 +63,8 @@ class MoveHereDisplayCommand extends DecentCommand {
                     playerLocation.getX(),
                     playerLocation.getY(),
                     playerLocation.getZ(),
-                    displayLocation.getYaw(),
-                    displayLocation.getPitch()
+                    playerLocation.getYaw(),
+                    playerLocation.getPitch()
             ));
             displayService.updateDisplay(display);
             displayService.saveDisplay(display);

@@ -54,8 +54,7 @@ public class AttributeCommandService {
     public <T> void setAttribute(DisplayBase display, AttributeDefinition<T> definition, String[] args) {
         AttributeCommandHandler<T> handler = commandHandlerRegistry.getHandler(definition.getKey(), args);
         if (handler == null) {
-            Log.warn("No command handler registered for attribute: " + definition.getName() + " with args: " + String.join(" ", args));
-            return;
+            throw new DecentCommandException("No command handler registered for attribute: " + definition.getName());
         }
 
         AttributeValue<T> value = parseAttributeValue(definition, handler, args);

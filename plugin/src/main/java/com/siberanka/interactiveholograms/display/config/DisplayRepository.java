@@ -85,6 +85,7 @@ public class DisplayRepository {
             } catch (IOException ignored) {
                 // Best-effort cleanup of our own temporary file.
             }
+            throw new DisplayConfigException("Failed to save display '" + displayName + "'", e);
         }
     }
 
