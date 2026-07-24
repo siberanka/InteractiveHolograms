@@ -64,6 +64,8 @@ public final class InteractiveHolograms {
         this.plugin = plugin;
     }
 
+    private Object packetInteractionListener;
+
     void enable() {
         Log.setLogger(plugin.getLogger());
         initializeNmsAdapter();
@@ -90,8 +92,8 @@ public final class InteractiveHolograms {
                 com.siberanka.interactiveholograms.packet.PacketRuntime runtime =
                         ((com.siberanka.interactiveholograms.plugin.InteractiveHologramsPlugin) plugin).getPacketRuntime();
                 if (runtime != null && runtime.getBackend() != null) {
-                    runtime.getBackend().registerListener(
-                            new com.siberanka.interactiveholograms.packet.PacketInteractionListener(this.displayModule.getInteractionService()));
+                    this.packetInteractionListener = new com.siberanka.interactiveholograms.packet.PacketInteractionListener(this.displayModule.getInteractionService());
+                    runtime.getBackend().registerListener(this.packetInteractionListener);
                 }
             }
         } else {
@@ -122,6 +124,15 @@ public final class InteractiveHolograms {
     }
 
     void disable() {
+        if (plugin instanceof com.siberanka.interactiveholograms.plugin.InteractiveHologramsPlugin) {
+            com.siberanka.interactiveholograms.packet.PacketRuntime runtime =
+                    ((com.siberanka.interactiveholograms.plugin.InteractiveHologramsPlugin) plugin).getPacketRuntime();
+            if (runtime != null && runtime.getBackend() != null && this.packetInteractionListener != null) {
+                runtime.getBackend().unregisterListener(this.packetInteractionListener);
+                this.packetInteractionListener = null;
+            }
+        }
+
         if (this.displayModule != null) {
             this.displayModule.shutdown();
         }
